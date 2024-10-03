@@ -1,8 +1,12 @@
 mod kafka;
+mod iam;
 
+use crate::kafka::IamClientContext;
+use aws_types::region::Region;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use rdkafka::admin::AdminOptions;
 use rdkafka::ClientConfig;
+use tokio::runtime::Handle;
 
 #[derive(Debug, Parser)] // requires `derive` feature
 #[command(name = "kafka-utils")]
@@ -14,6 +18,10 @@ struct Cli {
     bootstrap_servers: String,
     #[arg(short, long)]
     iam_auth: bool,
+    #[arg(short, long, default_value = "10000")]
+    timeout: u64,
+    #[arg(short, long, default_value = "eu-west-1")]
+    aws_region: String,
 }
 
 #[derive(Debug, Subcommand)]
@@ -67,31 +75,35 @@ struct TopicsDeleteArgs {
 async fn main() {
     let cli = Cli::parse();
     let client_config = kafka::create_config(cli.bootstrap_servers, cli.iam_auth);
+    let aws_region = String::from(cli.aws_region.to_owned());
+    let region = Region::new(aws_region);
+    let context =
+        IamClientContext::new(region, Handle::current());
 
     match cli.command {
         Commands::Topics(topics) => {
             let topics_cmd = topics.command.unwrap_or(TopicsCommands::List);
             match topics_cmd {
                 TopicsCommands::List => {
-                    list_topics_cmd(client_config);
+                    list_topics_cmd(client_config, context, cli.timeout);
                 }
                 TopicsCommands::Delete(args) => {
-                    delete_topics_cmd(client_config, args.run, args.topic_name).await;
+                    delete_topics_cmd(client_config, context, args.run, args.topic_name, cli.timeout).await;
                 }
             }
         }
     }
 }
 
-fn list_topics_cmd(config: ClientConfig) {
+fn list_topics_cmd(config: ClientConfig, context: IamClientContext, timeout: u64) {
     println!("Listing topics");
 
-    let topics = kafka::list_topics(config);
+    let topics = kafka::list_topics(config, context, timeout);
     topics.iter().for_each(|topic| println!("{topic}"));
 }
 
-async fn delete_topics_cmd(client_config: ClientConfig, run: bool, topic_name: Option<String>) {
-    let topics = kafka::list_topics(client_config.clone());
+async fn delete_topics_cmd(client_config: ClientConfig, context: IamClientContext, run: bool, topic_name: Option<String>, timeout: u64) {
+    let topics = kafka::list_topics(client_config.clone(), context.clone(), timeout);
     let delete_topics: Vec<&str> = topics
         .iter()
         .filter(|topic|
@@ -106,7 +118,7 @@ async fn delete_topics_cmd(client_config: ClientConfig, run: bool, topic_name: O
     if run {
         println!("Deleting topics: {delete_topics:?}");
         let admin_options = AdminOptions::new();
-        let result = kafka::create_admin_client(client_config).delete_topics(&delete_topics, &admin_options).await;
+        let result = kafka::create_admin_client(client_config, context.clone()).delete_topics(&delete_topics, &admin_options).await;
         match result {
             Ok(topic_results) => {
                 topic_results.iter()
