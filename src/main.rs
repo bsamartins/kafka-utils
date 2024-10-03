@@ -1,9 +1,8 @@
+mod kafka;
+
 use clap::{Args, Parser, Subcommand, ValueEnum};
-use rdkafka::admin::{AdminClient, AdminOptions};
-use rdkafka::client::DefaultClientContext;
-use rdkafka::consumer::{BaseConsumer, Consumer};
+use rdkafka::admin::AdminOptions;
 use rdkafka::ClientConfig;
-use std::time::Duration;
 
 #[derive(Debug, Parser)] // requires `derive` feature
 #[command(name = "kafka-utils")]
@@ -13,6 +12,8 @@ struct Cli {
     command: Commands,
     #[arg(short, long, required = true)]
     bootstrap_servers: String,
+    #[arg(short, long)]
+    iam_auth: bool,
 }
 
 #[derive(Debug, Subcommand)]
@@ -65,61 +66,32 @@ struct TopicsDeleteArgs {
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
+    let client_config = kafka::create_config(cli.bootstrap_servers, cli.iam_auth);
 
     match cli.command {
         Commands::Topics(topics) => {
             let topics_cmd = topics.command.unwrap_or(TopicsCommands::List);
             match topics_cmd {
                 TopicsCommands::List => {
-                    list_topics_cmd(cli.bootstrap_servers);
+                    list_topics_cmd(client_config);
                 }
                 TopicsCommands::Delete(args) => {
-                    delete_topics_cmd(cli.bootstrap_servers, args.run, args.topic_name).await;
+                    delete_topics_cmd(client_config, args.run, args.topic_name).await;
                 }
             }
         }
     }
 }
 
-fn create_config(bootstrap_servers: String) -> ClientConfig {
-    let mut config = ClientConfig::new();
-    config.set("bootstrap.servers", bootstrap_servers);
-    config
-}
-
-fn create_base_client(bootstrap_servers: String) -> BaseConsumer {
-    ClientConfig::new()
-        .set("bootstrap.servers", bootstrap_servers)
-        .create()
-        .expect("Consumer creation failed")
-}
-
-fn create_admin_client(bootstrap_servers: String) -> AdminClient<DefaultClientContext> {
-    create_config(bootstrap_servers)
-        .create()
-        .expect("admin client creation failed")
-}
-
-fn list_topics_cmd(bootstrap_servers: String) {
+fn list_topics_cmd(config: ClientConfig) {
     println!("Listing topics");
 
-    let topics = list_topics(bootstrap_servers);
+    let topics = kafka::list_topics(config);
     topics.iter().for_each(|topic| println!("{topic}"));
 }
 
-fn list_topics(bootstrap_servers: String) -> Vec<String> {
-    let result = create_base_client(bootstrap_servers)
-        .fetch_metadata(None, Duration::from_secs(30));
-
-    let mut topics = result.expect("Failed to fetch metadata").topics()
-        .iter().map(|topic| topic.name().to_string())
-        .collect::<Vec<_>>();
-    topics.sort();
-    topics
-}
-
-async fn delete_topics_cmd(bootstrap_servers: String, run: bool, topic_name: Option<String>) {
-    let topics = list_topics(bootstrap_servers.clone());
+async fn delete_topics_cmd(client_config: ClientConfig, run: bool, topic_name: Option<String>) {
+    let topics = kafka::list_topics(client_config.clone());
     let delete_topics: Vec<&str> = topics
         .iter()
         .filter(|topic|
@@ -134,7 +106,7 @@ async fn delete_topics_cmd(bootstrap_servers: String, run: bool, topic_name: Opt
     if run {
         println!("Deleting topics: {delete_topics:?}");
         let admin_options = AdminOptions::new();
-        let result = create_admin_client(bootstrap_servers).delete_topics(&delete_topics, &admin_options).await;
+        let result = kafka::create_admin_client(client_config).delete_topics(&delete_topics, &admin_options).await;
         match result {
             Ok(topic_results) => {
                 topic_results.iter()
