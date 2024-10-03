@@ -1,0 +1,17 @@
+services:
+  build:
+    image: rust
+    build:
+      dockerfile: Build.dockerfile
+      context: .
+    volumes:
+      - ./build/:/app/target
+    entrypoint:
+      - sh
+  build-2:
+    build:
+      dockerfile: Build2.dockerfile
+    volumes:
+      - ./:/app
+    entrypoint:
+      - bash
