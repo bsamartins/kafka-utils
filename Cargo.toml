@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-clap = "4.5.19"
+clap = { version = "4.5.19", features = ["derive"] }
 rdkafka = "0.36.2"
+tokio = { version = "1.0.0", features = ["rt", "rt-multi-thread", "macros"] }
