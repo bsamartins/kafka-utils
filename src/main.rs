@@ -129,12 +129,12 @@ fn list_brokers_cmd(client_config: ClientConfig, context: IamClientContext, time
 fn list_topics_cmd(config: ClientConfig, context: IamClientContext, timeout: u64) {
     println!("Listing topics");
 
-    let topics = kafka::list_topics_with_details(config, context, timeout);
+    let topics = kafka::list_topics(config, context, timeout);
     topics.iter().for_each(|topic| println!("{topic:?}"));
 }
 
 async fn delete_topics_cmd(client_config: ClientConfig, context: IamClientContext, run: bool, topic_name: Option<String>, timeout: u64) {
-    let topics = kafka::list_topics(client_config.clone(), context.clone(), timeout);
+    let topics = kafka::list_topics_names(client_config.clone(), context.clone(), timeout);
     let delete_topics: Vec<&str> = topics
         .iter()
         .filter(|topic|

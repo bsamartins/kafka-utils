@@ -34,7 +34,7 @@ pub fn create_admin_client(config: ClientConfig, context: IamClientContext) -> A
         .expect("admin client creation failed")
 }
 
-pub fn list_topics_with_details(config: ClientConfig, context: IamClientContext, timeout: u64) -> Vec<ListedTopic> {
+pub fn list_topics(config: ClientConfig, context: IamClientContext, timeout: u64) -> Vec<ListedTopic> {
     let result = create_base_client(config, context)
         .fetch_metadata(None, Duration::from_millis(timeout));
 
@@ -49,7 +49,7 @@ pub fn list_topics_with_details(config: ClientConfig, context: IamClientContext,
     topics
 }
 
-pub fn list_topics(config: ClientConfig, context: IamClientContext, timeout: u64) -> Vec<String> {
+pub fn list_topics_names(config: ClientConfig, context: IamClientContext, timeout: u64) -> Vec<String> {
     let result = create_base_client(config, context)
         .fetch_metadata(None, Duration::from_millis(timeout));
 
