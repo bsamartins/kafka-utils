@@ -35,17 +35,24 @@ pub fn create_admin_client(config: ClientConfig, context: IamClientContext) -> A
 }
 
 pub fn list_topics(config: ClientConfig, context: IamClientContext, timeout: u64) -> Vec<ListedTopic> {
-    let result = create_base_client(config, context)
-        .fetch_metadata(None, Duration::from_millis(timeout));
+    let client = create_base_client(config, context);
+    let metadata = client
+        .fetch_metadata(None, Duration::from_millis(timeout))
+        .expect("Failed to fetch metadata");
 
-    let mut topics = result.expect("Failed to fetch metadata").topics()
+    let mut topics = metadata.topics()
         .iter().map(|topic|
             ListedTopic {
                 name: topic.name().to_string(),
+                partitions: topic.partitions().iter().len() as i32,
+                replication_factor: 0,
+                message_count: 0,
+                size: 0,
             }
         )
         .collect::<Vec<_>>();
     topics.sort_by(|a, b| a.name.cmp(&b.name));
+
     topics
 }
 
