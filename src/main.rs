@@ -2,12 +2,16 @@ mod kafka;
 mod iam;
 mod types;
 
+use std::borrow::Cow;
 use crate::kafka::IamClientContext;
 use aws_types::region::Region;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use rdkafka::admin::AdminOptions;
 use rdkafka::ClientConfig;
 use tokio::runtime::Handle;
+use tabled::{Tabled, Table};
+use tabled::settings::Style;
+use crate::types::ListedTopic;
 
 #[derive(Debug, Parser)] // requires `derive` feature
 #[command(name = "kafka-utils")]
@@ -130,7 +134,12 @@ fn list_topics_cmd(config: ClientConfig, context: IamClientContext, timeout: u64
     println!("Listing topics");
 
     let topics = kafka::list_topics(config, context, timeout);
-    topics.iter().for_each(|topic| println!("{topic:?}"));
+    let style = Style::modern()
+        .remove_horizontal();
+    let table = Table::new(topics)
+        .with(style)
+        .to_string();
+    println!("{table}")
 }
 
 async fn delete_topics_cmd(client_config: ClientConfig, context: IamClientContext, run: bool, topic_name: Option<String>, timeout: u64) {
@@ -170,5 +179,29 @@ async fn delete_topics_cmd(client_config: ClientConfig, context: IamClientContex
         }
     } else {
         println!("Dry run: {delete_topics:?}");
+    }
+}
+
+impl Tabled for ListedTopic {
+    const LENGTH: usize = 5;
+
+    fn fields(&self) -> Vec<Cow<'_, str>> {
+        vec![
+            self.name.as_str().into(),
+            self.partitions.to_string().into(),
+            self.replication_factor.to_string().into(),
+            self.message_count.to_string().into(),
+            self.size.to_string().into(),
+        ]
+    }
+
+    fn headers() -> Vec<Cow<'static, str>> {
+        vec![
+            "Name".into(),
+            "Partitions".into(),
+            "Replication Factor".into(),
+            "Message Count".into(),
+            "Size".into(),
+        ]
     }
 }
