@@ -27,6 +27,8 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Commands {
     #[command(arg_required_else_help = true)]
+    Cluster(ClusterArgs),
+    #[command(arg_required_else_help = true)]
     Topics(TopicsArgs),
 }
 
@@ -44,6 +46,19 @@ impl std::fmt::Display for ColorWhen {
             .get_name()
             .fmt(f)
     }
+}
+
+#[derive(Debug, Args)]
+#[command(args_conflicts_with_subcommands = true)]
+#[command(flatten_help = true)]
+struct ClusterArgs {
+    #[command(subcommand)]
+    command: Option<ClusterCommands>,
+}
+
+#[derive(Debug, Subcommand)]
+enum ClusterCommands {
+    Brokers,
 }
 
 #[derive(Debug, Args)]
@@ -81,6 +96,14 @@ async fn main() {
         IamClientContext::new(region, Handle::current());
 
     match cli.command {
+        Commands::Cluster(cluster) => {
+            let cluster_cmd = cluster.command.unwrap_or(ClusterCommands::Brokers);
+            match cluster_cmd {
+                ClusterCommands::Brokers => {
+                    list_brokers_cmd(client_config, context, cli.timeout)
+                }
+            }
+        }
         Commands::Topics(topics) => {
             let topics_cmd = topics.command.unwrap_or(TopicsCommands::List);
             match topics_cmd {
@@ -93,6 +116,13 @@ async fn main() {
             }
         }
     }
+}
+
+fn list_brokers_cmd(client_config: ClientConfig, context: IamClientContext, timeout: u64) {
+    let brokers = kafka::list_brokers(client_config, context, timeout);
+    brokers.iter().for_each(|broker| {
+        println!("[{}] {}:{}", broker.id(), broker.host(), broker.port())
+    });
 }
 
 fn list_topics_cmd(config: ClientConfig, context: IamClientContext, timeout: u64) {

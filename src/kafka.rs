@@ -3,6 +3,7 @@ use aws_types::region::Region;
 use rdkafka::admin::AdminClient;
 use rdkafka::client::OAuthToken;
 use rdkafka::consumer::{BaseConsumer, Consumer, ConsumerContext};
+use rdkafka::metadata::MetadataBroker;
 use rdkafka::{ClientConfig, ClientContext};
 use std::error::Error;
 use std::thread;
@@ -42,6 +43,20 @@ pub fn list_topics(config: ClientConfig, context: IamClientContext, timeout: u64
         .collect::<Vec<_>>();
     topics.sort();
     topics
+}
+
+pub fn list_brokers<'a>(config: ClientConfig, context: IamClientContext, timeout: u64) -> Vec<MetadataBroker> {
+    let result = create_base_client(config, context)
+        .fetch_metadata(None, Duration::from_millis(timeout));
+
+    result.expect("Failed to fetch metadata")
+        .brokers()
+        .iter()
+        .map(|broker| broker)
+        .for_each(|broker| println!("[{}] {}:{}", broker.id(), broker.host(), broker.port()));
+        // .collect::<Vec<_>>()
+
+    return Vec::new();
 }
 
 #[derive(Clone)]
