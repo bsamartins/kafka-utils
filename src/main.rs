@@ -1,5 +1,6 @@
 mod kafka;
 mod iam;
+mod types;
 
 use crate::kafka::IamClientContext;
 use aws_types::region::Region;
@@ -121,7 +122,7 @@ async fn main() {
 fn list_brokers_cmd(client_config: ClientConfig, context: IamClientContext, timeout: u64) {
     let brokers = kafka::list_brokers(client_config, context, timeout);
     brokers.iter().for_each(|broker| {
-        println!("[{}] {}:{}", broker.id(), broker.host(), broker.port())
+        println!("[{}] {}:{}", broker.id, broker.host, broker.port)
     });
 }
 
