@@ -14,4 +14,4 @@ services:
     volumes:
       - ./:/app
     entrypoint:
-      - bash
+      - sh

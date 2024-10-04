@@ -16,3 +16,6 @@ rustup target add x86_64-unknown-linux-gnu
 cargo install cargo-zigbuild
 export PATH="$PATH;/usr/local/cargo/bin/"
 cargo-zigbuild zigbuild --target x86_64-unknown-linux-gnu   
+
+cargo-zigbuild zigbuild --target x86_64-unknown-linux-musl
+OPENSSL_DIR
