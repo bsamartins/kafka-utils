@@ -1,5 +1,5 @@
 use crate::iam::generate_auth_token;
-use crate::types::Broker;
+use crate::types::{Broker, ListedTopic};
 use aws_types::region::Region;
 use rdkafka::admin::AdminClient;
 use rdkafka::client::OAuthToken;
@@ -34,6 +34,21 @@ pub fn create_admin_client(config: ClientConfig, context: IamClientContext) -> A
         .expect("admin client creation failed")
 }
 
+pub fn list_topics_with_details(config: ClientConfig, context: IamClientContext, timeout: u64) -> Vec<ListedTopic> {
+    let result = create_base_client(config, context)
+        .fetch_metadata(None, Duration::from_millis(timeout));
+
+    let mut topics = result.expect("Failed to fetch metadata").topics()
+        .iter().map(|topic|
+            ListedTopic {
+                name: topic.name().to_string(),
+            }
+        )
+        .collect::<Vec<_>>();
+    topics.sort_by(|a, b| a.name.cmp(&b.name));
+    topics
+}
+
 pub fn list_topics(config: ClientConfig, context: IamClientContext, timeout: u64) -> Vec<String> {
     let result = create_base_client(config, context)
         .fetch_metadata(None, Duration::from_millis(timeout));
@@ -41,7 +56,7 @@ pub fn list_topics(config: ClientConfig, context: IamClientContext, timeout: u64
     let mut topics = result.expect("Failed to fetch metadata").topics()
         .iter().map(|topic| topic.name().to_string())
         .collect::<Vec<_>>();
-    topics.sort();
+    topics.sort_by_key(|t| t.to_string());
     topics
 }
 
