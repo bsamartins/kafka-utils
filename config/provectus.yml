@@ -1,0 +1,16 @@
+kafka:
+  clusters:
+    - name: local
+      bootstrapservers: kafka1:19092,kafka2:19093,kafka3:19094
+#      schemaregistry: http://kafka-schema-registry:8085
+#      audit:
+#        console-audit-enabled: true
+#        topic-audit-enabled: true
+#        topic: '__provectus-ui-audit-log' # default name
+        #        audit-topic-properties: # any kafka topic properties in format of a map
+        #          - retention.ms: 43200000
+        #        audit-topics-partitions: 1 # how many partitions, default is 1
+#        level: all # either ALL or ALTER_ONLY (default). ALL will log all read operations.
+
+#auth:
+#  type: DISABLED
