@@ -1,10 +1,13 @@
 use crate::iam::generate_auth_token;
 use crate::types::{Broker, ListedTopic};
 use aws_types::region::Region;
+use itertools::Itertools;
 use rdkafka::admin::AdminClient;
 use rdkafka::client::OAuthToken;
 use rdkafka::consumer::{BaseConsumer, Consumer, ConsumerContext};
+use rdkafka::metadata::MetadataTopic;
 use rdkafka::{ClientConfig, ClientContext};
+use std::collections::HashMap;
 use std::error::Error;
 use std::thread;
 use std::time::Duration;
@@ -41,21 +44,18 @@ pub fn list_topics(config: ClientConfig, context: IamClientContext, timeout: u64
         .expect("Failed to fetch metadata");
 
     let topics_metadata = metadata.topics();
-
-    let watermarks = topics_metadata.iter()
-        .flat_map(|topic|
-            topic.partitions()
-                .iter()
-                .map(|partition| (topic.name(), partition.id()))
-        )
-        .map(|(topic, partition_id)|
-            (topic, partition_id, client.fetch_watermarks(topic, partition_id, Duration::from_millis(timeout)))
-        ).collect::<Vec<_>>();
-
-    watermarks.iter().for_each(|(topic, partition_id, watermark)| println!("watermark {:?} {:?} {:?}", topic, partition_id, watermark));
+    let topic_offsets = fetch_topics_offsets(client, timeout, topics_metadata);
 
     let mut topics = topics_metadata
-        .iter().map(|topic|
+        .iter().map(|topic| {
+            let message_count = match topic_offsets.get(topic.name()) {
+                Some(topic_offset) => {
+                    topic_offset.iter().map(|(_, (min, max))| max - min)
+                        .sum()
+                },
+                None => 0,
+            };
+
             ListedTopic {
                 name: topic.name().to_string(),
                 partitions: topic.partitions().iter().len() as i32,
@@ -64,14 +64,31 @@ pub fn list_topics(config: ClientConfig, context: IamClientContext, timeout: u64
                     .max()
                     .map(|v| *v)
                     .unwrap_or_else(|| 0),
-                message_count: 0,
+                message_count,
                 size: 0,
             }
-        )
+        })
         .collect::<Vec<_>>();
     topics.sort_by(|a, b| a.name.cmp(&b.name));
-
     topics
+}
+
+fn fetch_topics_offsets(client: BaseConsumer<IamClientContext>, timeout: u64, topics_metadata: &[MetadataTopic]) -> HashMap<&str, Vec<(i32, (i64, i64))>> {
+    topics_metadata.iter()
+        .flat_map(|topic|
+            topic.partitions()
+                .iter()
+                .map(|partition| (topic.name(), partition.id()))
+        )
+        .map(|(topic, partition_id)|
+            (topic, (partition_id, client.fetch_watermarks(topic, partition_id, Duration::from_millis(timeout))))
+        ).filter_map(|(topic, (partition_id, offset_result))|
+        match offset_result {
+            Ok(offset) => Some((topic, (partition_id, offset))),
+            Err(_) => None
+        }
+    )
+        .into_group_map()
 }
 
 pub fn list_topics_names(config: ClientConfig, context: IamClientContext, timeout: u64) -> Vec<String> {
