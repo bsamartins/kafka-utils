@@ -40,12 +40,30 @@ pub fn list_topics(config: ClientConfig, context: IamClientContext, timeout: u64
         .fetch_metadata(None, Duration::from_millis(timeout))
         .expect("Failed to fetch metadata");
 
-    let mut topics = metadata.topics()
+    let topics_metadata = metadata.topics();
+
+    let watermarks = topics_metadata.iter()
+        .flat_map(|topic|
+            topic.partitions()
+                .iter()
+                .map(|partition| (topic.name(), partition.id()))
+        )
+        .map(|(topic, partition_id)|
+            (topic, partition_id, client.fetch_watermarks(topic, partition_id, Duration::from_millis(timeout)))
+        ).collect::<Vec<_>>();
+
+    watermarks.iter().for_each(|(topic, partition_id, watermark)| println!("watermark {:?} {:?} {:?}", topic, partition_id, watermark));
+
+    let mut topics = topics_metadata
         .iter().map(|topic|
             ListedTopic {
                 name: topic.name().to_string(),
                 partitions: topic.partitions().iter().len() as i32,
-                replication_factor: 0,
+                replication_factor: topic.partitions().iter()
+                    .flat_map(|partition| partition.replicas().iter())
+                    .max()
+                    .map(|v| *v)
+                    .unwrap_or_else(|| 0),
                 message_count: 0,
                 size: 0,
             }
