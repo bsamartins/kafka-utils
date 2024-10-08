@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "common",
+    "cli",
+#    "tui"
+]
+exclude = [
+#    "cli",
+    "tui"
+]

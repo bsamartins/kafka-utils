@@ -1,18 +1,20 @@
-use crate::kafka;
-use crate::kafka::IamClientContext;
-use crate::types::ListedTopic;
+use common::kafka;
 use clap::{Args, Subcommand};
 use rdkafka::admin::AdminOptions;
 use rdkafka::ClientConfig;
 use std::borrow::Cow;
 use std::time::Duration;
 use tabled::Tabled;
+use common::kafka::client::IamClientContext;
+use common::kafka::types::ListTopicEntry;
 use crate::cmd::table;
 
 pub fn list_topics_cmd(config: ClientConfig, context: IamClientContext, timeout: Duration) {
     println!("Listing topics");
 
-    let topics = kafka::list_topics(config, context, timeout);
+    let topics: Vec<ListTopicTable> = kafka::topic::list_topics(config, context, timeout)
+        .iter().map(|e| ListTopicTable(e.clone()))
+        .collect::<Vec<_>>();
 
     let table = table::create(topics)
         .to_string();
@@ -21,7 +23,7 @@ pub fn list_topics_cmd(config: ClientConfig, context: IamClientContext, timeout:
 }
 
 pub async fn delete_topics_cmd(client_config: ClientConfig, context: IamClientContext, run: bool, topic_name: Option<String>, timeout: Duration) {
-    let topics = kafka::list_topics_names(client_config.clone(), context.clone(), timeout);
+    let topics = kafka::topic::list_topics_names(client_config.clone(), context.clone(), timeout);
     let delete_topics: Vec<&str> = topics
         .iter()
         .filter(|topic|
@@ -36,7 +38,7 @@ pub async fn delete_topics_cmd(client_config: ClientConfig, context: IamClientCo
     if run {
         println!("Deleting topics: {delete_topics:?}");
         let admin_options = AdminOptions::new();
-        let result = kafka::create_admin_client(client_config, context.clone()).delete_topics(&delete_topics, &admin_options).await;
+        let result = kafka::client::create_admin_client(client_config, context.clone()).delete_topics(&delete_topics, &admin_options).await;
         match result {
             Ok(topic_results) => {
                 topic_results.iter()
@@ -60,16 +62,18 @@ pub async fn delete_topics_cmd(client_config: ClientConfig, context: IamClientCo
     }
 }
 
-impl Tabled for ListedTopic {
+struct ListTopicTable(ListTopicEntry);
+
+impl Tabled for ListTopicTable {
     const LENGTH: usize = 5;
 
     fn fields(&self) -> Vec<Cow<'_, str>> {
         vec![
-            self.name.as_str().into(),
-            self.partitions.to_string().into(),
-            self.replication_factor.to_string().into(),
-            self.message_count.to_string().into(),
-            self.size.to_string().into(),
+            self.0.name.as_str().into(),
+            self.0.partitions.to_string().into(),
+            self.0.replication_factor.to_string().into(),
+            self.0.message_count.to_string().into(),
+            self.0.size.to_string().into(),
         ]
     }
 

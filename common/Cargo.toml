@@ -1,0 +1,20 @@
+[package]
+name = "common"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tracing = { version = "0.1.40", features = ["log"] }
+base64 = "0.22.1"
+chrono = "0.4.38"
+url = "2.5.2"
+aws-config = "1.5.7"
+aws-credential-types = "1.2.1"
+aws-types = "1.3.3"
+thiserror = "1.0.64"
+aws-sdk-sts = "1.44.0"
+aws-sigv4 = "1.2.4"
+openssl = { version = "0.10.66"}
+itertools = "0.13.0"
+rdkafka = { version = "0.36.2", features = ["ssl"] }
+tokio = { version = "1.40.0", features = ["rt", "rt-multi-thread", "macros"] }

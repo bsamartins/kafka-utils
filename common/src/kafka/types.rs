@@ -1,5 +1,5 @@
-#[derive(Debug)]
-pub struct ListedTopic {
+#[derive(Debug, Clone)]
+pub struct ListTopicEntry {
     pub name: String,
     pub partitions: i32,
     pub replication_factor: i32,
@@ -7,13 +7,14 @@ pub struct ListedTopic {
     pub size: i64,
 }
 
-#[derive(Debug)]
-pub struct ListedConsumerGroup {
+#[derive(Debug, Clone)]
+pub struct ListConsumerGroupEntry {
     pub name: String,
     pub state: String,
 }
 
-pub struct Broker {
+#[derive(Debug, Clone)]
+pub struct ListBrokerEntry {
     pub id: i32,
     pub host: String,
     pub port: i32,

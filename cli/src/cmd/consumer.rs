@@ -1,6 +1,5 @@
 use crate::cmd::table;
-use crate::kafka::{create_admin_client, create_base_client, IamClientContext};
-use crate::types::ListedConsumerGroup;
+use common::kafka::types::ListConsumerGroupEntry;
 use clap::{Args, Subcommand};
 use rdkafka::consumer::Consumer;
 use rdkafka::ClientConfig;
@@ -9,6 +8,7 @@ use std::time::Duration;
 use rdkafka::admin::AdminOptions;
 use rdkafka::groups::GroupInfo;
 use tabled::Tabled;
+use common::kafka::client::{create_admin_client, create_base_client, IamClientContext};
 
 #[derive(Debug, Args)]
 #[command(args_conflicts_with_subcommands = true)]
@@ -44,14 +44,15 @@ pub(crate) fn list(config: ClientConfig, context: IamClientContext, timeout: Dur
     let mut groups = result.groups()
         .iter()
         .filter(|g| filter_group(g, consumer_group_query.clone()))
-        .map(|group|
-            ListedConsumerGroup {
-                name: group.name().into(),
-                state: group.state().into(),
+        .map(|g|
+            ListConsumerGroupEntry {
+                name: g.name().into(),
+                state: g.state().into(),
             }
         )
+        .map(|group| ListConsumerGroupEntryTable(group))
         .collect::<Vec<_>>();
-    groups.sort_by_key(|i| i.name.clone());
+    groups.sort_by_key(|i| i.0.name.clone());
 
     println!("{}", table::create(groups));
 }
@@ -65,7 +66,7 @@ pub(crate) async fn delete(config: ClientConfig, context: IamClientContext, time
         .iter()
         .filter(|g| filter_group(g, consumer_group_query.clone()))
         .map(|group|
-            ListedConsumerGroup {
+            ListConsumerGroupEntry {
                 name: group.name().into(),
                 state: group.state().into(),
             }
@@ -91,13 +92,15 @@ fn filter_group(group: &GroupInfo, group_query: Option<String>) -> bool {
     }
 }
 
-impl Tabled for ListedConsumerGroup {
+struct ListConsumerGroupEntryTable(ListConsumerGroupEntry);
+
+impl Tabled for ListConsumerGroupEntryTable {
     const LENGTH: usize = 2;
 
     fn fields(&self) -> Vec<Cow<'_, str>> {
         vec![
-            self.name.as_str().into(),
-            self.state.as_str().into(),
+            self.0.name.as_str().into(),
+            self.0.state.as_str().into(),
         ]
     }
 

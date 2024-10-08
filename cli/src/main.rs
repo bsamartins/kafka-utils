@@ -1,15 +1,13 @@
-mod kafka;
-mod iam;
-mod types;
 mod cmd;
 
 use crate::cmd::broker::{ClusterArgs, ClusterCommands};
-use crate::cmd::topic::{TopicsArgs, TopicsCommands};
 use crate::cmd::consumer::{ConsumerArgs, ConsumerCommands, ListConsumerArgs};
-use crate::kafka::IamClientContext;
+use crate::cmd::topic::{TopicsArgs, TopicsCommands};
 use aws_types::region::Region;
+use clap::{Parser, Subcommand, ValueEnum};
+use common::kafka;
+use common::kafka::client::IamClientContext;
 use core::time::Duration;
-use clap::{Args, Parser, Subcommand, ValueEnum};
 use tokio::runtime::Handle;
 
 #[derive(Debug, Parser)] // requires `derive` feature
@@ -57,7 +55,7 @@ impl std::fmt::Display for ColorWhen {
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
-    let client_config = kafka::create_config(cli.bootstrap_servers, cli.iam_auth);
+    let client_config = kafka::client::create_config(cli.bootstrap_servers, cli.iam_auth);
     let aws_region = String::from(cli.aws_region.to_owned());
     let region = Region::new(aws_region);
     let context =
