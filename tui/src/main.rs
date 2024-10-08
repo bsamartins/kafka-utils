@@ -1,4 +1,6 @@
-use std::io;
+mod tui;
+
+use color_eyre::eyre::{bail, Result, WrapErr};
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::buffer::Buffer;
@@ -10,10 +12,16 @@ use ratatui::widgets::block::{Position, Title};
 use ratatui::widgets::{Block, Widget};
 use ratatui::{style::Stylize, widgets::Paragraph, DefaultTerminal, Frame};
 
-fn main() -> io::Result<()> {
-    let mut terminal = ratatui::init();
+fn main() -> Result<()> {
+    color_eyre::install().expect("color_eyre::install");
+    let mut terminal = tui::init()?;
     let app_result = App::default().run(&mut terminal);
-    ratatui::restore();
+    if let Err(err) = tui::restore() {
+        eprintln!(
+            "failed to restore terminal. Run `reset` or restart your terminal to recover: {}",
+            err
+        );
+    }
     app_result
 }
 
@@ -26,10 +34,10 @@ pub struct App {
 impl App {
 
     /// runs the application's main loop until the user quits
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
-            self.handle_events()?;
+            self.handle_events().wrap_err("handle events failed")?;
         }
         Ok(())
     }
@@ -38,41 +46,42 @@ impl App {
         frame.render_widget(self, frame.area());
     }
 
-    fn handle_events(&mut self) -> io::Result<()> {
+    fn handle_events(&mut self) -> Result<()> {
         match event::read()? {
             // it's important to check that the event is a key press event as
             // crossterm also emits key release and repeat events on Windows.
-            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                self.handle_key_event(key_event)
-            }
-            _ => {}
-        };
-        Ok(())
+            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => self
+                .handle_key_event(key_event)
+                .wrap_err_with(|| format!("handling key event failed:\n{key_event:#?}")),
+            _ => Ok(())
+        }
     }
 
-    fn handle_key_event(&mut self, key_event: KeyEvent) {
+    fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<()> {
         match key_event.code {
             KeyCode::Char('q') => self.exit(),
-            KeyCode::Left => self.decrement_counter(),
-            KeyCode::Right => self.increment_counter(),
+            KeyCode::Left => self.decrement_counter()?,
+            KeyCode::Right => self.increment_counter()?,
             _ => {}
         }
+        Ok(())
     }
 
     fn exit(&mut self) {
         self.exit = true;
     }
 
-    fn increment_counter(&mut self) {
-        if self.counter <= 255 {
-            self.counter += 1;
+    fn increment_counter(&mut self) -> Result<()> {
+        self.counter += 1;
+        if self.counter > 2 {
+            bail!("counter overflow");
         }
+        Ok(())
     }
 
-    fn decrement_counter(&mut self) {
-        if self.counter > 0 {
-            self.counter -= 1;
-        }
+    fn decrement_counter(&mut self) -> Result<()> {
+        self.counter -= 1;
+        Ok(())
     }
 }
 
