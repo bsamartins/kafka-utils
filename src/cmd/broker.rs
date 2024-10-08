@@ -1,9 +1,10 @@
+use std::time::Duration;
 use clap::{Args, Subcommand};
 use crate::kafka;
 use crate::kafka::IamClientContext;
 use rdkafka::ClientConfig;
 
-pub fn list_brokers_cmd(client_config: ClientConfig, context: IamClientContext, timeout: u64) {
+pub fn list_brokers_cmd(client_config: ClientConfig, context: IamClientContext, timeout: Duration) {
     let brokers = kafka::list_brokers(client_config, context, timeout);
     brokers.iter().for_each(|broker| {
         println!("[{}] {}:{}", broker.id, broker.host, broker.port)

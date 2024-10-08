@@ -37,10 +37,10 @@ pub fn create_admin_client(config: ClientConfig, context: IamClientContext) -> A
         .expect("admin client creation failed")
 }
 
-pub fn list_topics(config: ClientConfig, context: IamClientContext, timeout: u64) -> Vec<ListedTopic> {
+pub fn list_topics(config: ClientConfig, context: IamClientContext, timeout: Duration) -> Vec<ListedTopic> {
     let client = create_base_client(config, context);
     let metadata = client
-        .fetch_metadata(None, Duration::from_millis(timeout))
+        .fetch_metadata(None, timeout)
         .expect("Failed to fetch metadata");
 
     let topics_metadata = metadata.topics();
@@ -73,7 +73,7 @@ pub fn list_topics(config: ClientConfig, context: IamClientContext, timeout: u64
     topics
 }
 
-fn fetch_topics_offsets(client: BaseConsumer<IamClientContext>, timeout: u64, topics_metadata: &[MetadataTopic]) -> HashMap<&str, Vec<(i32, (i64, i64))>> {
+fn fetch_topics_offsets(client: BaseConsumer<IamClientContext>, timeout: Duration, topics_metadata: &[MetadataTopic]) -> HashMap<&str, Vec<(i32, (i64, i64))>> {
     topics_metadata.iter()
         .flat_map(|topic|
             topic.partitions()
@@ -81,7 +81,7 @@ fn fetch_topics_offsets(client: BaseConsumer<IamClientContext>, timeout: u64, to
                 .map(|partition| (topic.name(), partition.id()))
         )
         .map(|(topic, partition_id)|
-            (topic, (partition_id, client.fetch_watermarks(topic, partition_id, Duration::from_millis(timeout))))
+            (topic, (partition_id, client.fetch_watermarks(topic, partition_id, timeout)))
         ).filter_map(|(topic, (partition_id, offset_result))|
         match offset_result {
             Ok(offset) => Some((topic, (partition_id, offset))),
@@ -91,9 +91,9 @@ fn fetch_topics_offsets(client: BaseConsumer<IamClientContext>, timeout: u64, to
         .into_group_map()
 }
 
-pub fn list_topics_names(config: ClientConfig, context: IamClientContext, timeout: u64) -> Vec<String> {
+pub fn list_topics_names(config: ClientConfig, context: IamClientContext, timeout: Duration) -> Vec<String> {
     let result = create_base_client(config, context)
-        .fetch_metadata(None, Duration::from_millis(timeout));
+        .fetch_metadata(None, timeout);
 
     let mut topics = result.expect("Failed to fetch metadata").topics()
         .iter().map(|topic| topic.name().to_string())
@@ -102,9 +102,9 @@ pub fn list_topics_names(config: ClientConfig, context: IamClientContext, timeou
     topics
 }
 
-pub fn list_brokers<'a>(config: ClientConfig, context: IamClientContext, timeout: u64) -> Vec<Broker> {
+pub fn list_brokers<'a>(config: ClientConfig, context: IamClientContext, timeout: Duration) -> Vec<Broker> {
     let result = create_base_client(config, context)
-        .fetch_metadata(None, Duration::from_millis(timeout));
+        .fetch_metadata(None, timeout);
 
     result.expect("Failed to fetch metadata")
         .brokers()

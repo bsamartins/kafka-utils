@@ -8,6 +8,7 @@ use crate::cmd::topic::{TopicsArgs, TopicsCommands};
 use crate::cmd::consumer::{ConsumerArgs, ConsumerCommands};
 use crate::kafka::IamClientContext;
 use aws_types::region::Region;
+use core::time::Duration;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use tokio::runtime::Handle;
 
@@ -61,13 +62,14 @@ async fn main() {
     let region = Region::new(aws_region);
     let context =
         IamClientContext::new(region, Handle::current());
+    let timeout = Duration::from_millis(cli.timeout.into());
 
     match cli.command {
         Commands::Cluster(cluster) => {
             let cluster_cmd = cluster.command.unwrap_or(ClusterCommands::Brokers);
             match cluster_cmd {
                 ClusterCommands::Brokers => {
-                    cmd::broker::list_brokers_cmd(client_config, context, cli.timeout)
+                    cmd::broker::list_brokers_cmd(client_config, context, timeout)
                 }
             }
         }
@@ -75,10 +77,10 @@ async fn main() {
             let topics_cmd = topics.command.unwrap_or(TopicsCommands::List);
             match topics_cmd {
                 TopicsCommands::List => {
-                    cmd::topic::list_topics_cmd(client_config, context, cli.timeout);
+                    cmd::topic::list_topics_cmd(client_config, context, timeout);
                 }
                 TopicsCommands::Delete(args) => {
-                    cmd::topic::delete_topics_cmd(client_config, context, args.run, args.topic_name, cli.timeout).await;
+                    cmd::topic::delete_topics_cmd(client_config, context, args.run, args.topic_name, timeout).await;
                 }
             }
         }
@@ -86,7 +88,7 @@ async fn main() {
             let consumer_cmd = consumer.command.unwrap_or(ConsumerCommands::List);
             match consumer_cmd {
                 ConsumerCommands::List => {
-                    cmd::consumer::list(client_config, context, cli.timeout)
+                    cmd::consumer::list(client_config, context, timeout)
                 }
             }
         }

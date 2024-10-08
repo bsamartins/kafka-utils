@@ -5,10 +5,11 @@ use clap::{Args, Subcommand};
 use rdkafka::admin::AdminOptions;
 use rdkafka::ClientConfig;
 use std::borrow::Cow;
+use std::time::Duration;
 use tabled::Tabled;
 use crate::cmd::table;
 
-pub fn list_topics_cmd(config: ClientConfig, context: IamClientContext, timeout: u64) {
+pub fn list_topics_cmd(config: ClientConfig, context: IamClientContext, timeout: Duration) {
     println!("Listing topics");
 
     let topics = kafka::list_topics(config, context, timeout);
@@ -19,7 +20,7 @@ pub fn list_topics_cmd(config: ClientConfig, context: IamClientContext, timeout:
     println!("{table}")
 }
 
-pub async fn delete_topics_cmd(client_config: ClientConfig, context: IamClientContext, run: bool, topic_name: Option<String>, timeout: u64) {
+pub async fn delete_topics_cmd(client_config: ClientConfig, context: IamClientContext, run: bool, topic_name: Option<String>, timeout: Duration) {
     let topics = kafka::list_topics_names(client_config.clone(), context.clone(), timeout);
     let delete_topics: Vec<&str> = topics
         .iter()

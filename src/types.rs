@@ -7,6 +7,11 @@ pub struct ListedTopic {
     pub size: i64,
 }
 
+#[derive(Debug)]
+pub struct ListedConsumerGroup {
+    pub name: String,
+}
+
 pub struct Broker {
     pub id: i32,
     pub host: String,
