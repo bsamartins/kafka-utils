@@ -8,3 +8,4 @@ crossterm = "0.28.1"
 ratatui = "0.28.1"
 common = { path = "../common" }
 color-eyre = "0.6.3"
+tui-input = "0.10.1"

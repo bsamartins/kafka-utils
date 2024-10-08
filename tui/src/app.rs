@@ -5,16 +5,17 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::prelude::Widget;
 use ratatui::style::{Color, Style};
+use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph};
 use ratatui::{DefaultTerminal, Frame};
-use ratatui::text::{Line, Span};
+use tui_input::backend::crossterm::EventHandler;
+use tui_input::Input;
 
 #[derive(Debug, Default)]
 pub struct App {
     counter: u8,
     input_mode: InputMode,
-    input: String,
-    character_index: usize,
+    input: Input,
     commands: Vec<String>,
     exit: bool,
 }
@@ -59,10 +60,14 @@ impl App {
         match self.input_mode {
             InputMode::COMMAND => {
                 match key_event.code {
-                    KeyCode::Esc => self.input_mode = InputMode::DEFAULT,
+                    KeyCode::Esc => {
+                        self.input_mode = InputMode::DEFAULT;
+                        self.input.reset();
+                    },
                     KeyCode::Enter => self.submit_message(),
-                    KeyCode::Char(char) => self.enter_char(char),
-                    _ => {}
+                    _ => {
+                        self.input.handle_event(&Event::Key(key_event));
+                    }
                 }
             }
             InputMode::DEFAULT => {
@@ -80,42 +85,9 @@ impl App {
     }
 
     fn submit_message(&mut self) {
-        self.commands.push(self.input.clone());
-        self.input.clear();
-        self.reset_cursor();
+        self.commands.push(self.input.to_string());
+        self.input.reset();
         self.input_mode = InputMode::DEFAULT;
-    }
-
-    fn move_cursor_left(&mut self) {
-        let cursor_moved_left = self.character_index.saturating_sub(1);
-        self.character_index = self.clamp_cursor(cursor_moved_left);
-    }
-
-    fn move_cursor_right(&mut self) {
-        let cursor_moved_right = self.character_index.saturating_add(1);
-        self.character_index = self.clamp_cursor(cursor_moved_right);
-    }
-
-    fn enter_char(&mut self, new_char: char) {
-        let index = self.byte_index();
-        self.input.insert(index, new_char);
-        self.move_cursor_right();
-    }
-
-    fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
-        new_cursor_pos.clamp(0, self.input.chars().count())
-    }
-
-    fn reset_cursor(&mut self) {
-        self.character_index = 0;
-    }
-
-    fn byte_index(&self) -> usize {
-        self.input
-            .char_indices()
-            .map(|(i, _)| i)
-            .nth(self.character_index)
-            .unwrap_or(self.input.len())
     }
 
     fn exit(&mut self) {
@@ -173,14 +145,13 @@ impl Widget for &App {
 
         let [input_area, main_area] = vertical.areas(area);
 
-        Paragraph::new(self.input.as_str())
+        Paragraph::new(self.input.value())
             .style(match self.input_mode {
                 InputMode::DEFAULT => Style::default(),
                 InputMode::COMMAND => Style::default().fg(Color::Yellow),
             })
             .block(Block::default().title("Input").borders(Borders::ALL))
-            .render(input_area, buf)
-        ;
+            .render(input_area, buf);
 
         let messages: Vec<ListItem> = self
             .commands
