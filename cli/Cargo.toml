@@ -1,5 +1,5 @@
 [package]
-name = "kafka-utils"
+name = "kafka-utils-cli"
 version = "0.1.0"
 edition = "2021"
 
@@ -18,7 +18,5 @@ thiserror = "1.0.64"
 aws-sdk-sts = "1.44.0"
 aws-sigv4 = "1.2.4"
 openssl = { version = "0.10.66"}
-tabled = "0.16.0"
 itertools = "0.13.0"
-ratatui = "0.28.1"
-crossterm = "0.28.1"
+tabled = "0.16.0"
