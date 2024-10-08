@@ -2,9 +2,9 @@
 members = [
     "common",
     "cli",
-#    "tui"
+#    "tui",
 ]
 exclude = [
 #    "cli",
-    "tui"
+    "tui",
 ]

@@ -1,7 +1,6 @@
 [package]
 name = "common"
 version = "0.1.0"
-edition = "2021"
 
 [dependencies]
 tracing = { version = "0.1.40", features = ["log"] }
