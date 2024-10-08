@@ -1,5 +1,6 @@
 mod tui;
 mod app;
+mod list_topics;
 
 use app::App;
 use color_eyre::eyre::Result;

@@ -1,4 +1,4 @@
-use color_eyre::eyre::{bail, WrapErr};
+use color_eyre::eyre::WrapErr;
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::buffer::Buffer;
@@ -13,7 +13,6 @@ use tui_input::Input;
 
 #[derive(Debug, Default)]
 pub struct App {
-    counter: u8,
     input_mode: InputMode,
     input: Input,
     commands: Vec<String>,
@@ -74,9 +73,6 @@ impl App {
                 match key_event.code {
                     KeyCode::Char('q') => self.exit(),
                     KeyCode::Char(':') => self.input_mode = InputMode::COMMAND,
-                    KeyCode::Left => self.decrement_counter()?,
-                    KeyCode::Right => self.increment_counter()?,
-                    KeyCode::Up => self.decrement_counter()?,
                     _ => {}
                 }
             }
@@ -93,51 +89,10 @@ impl App {
     fn exit(&mut self) {
         self.exit = true;
     }
-
-    fn increment_counter(&mut self) -> color_eyre::Result<()> {
-        self.counter += 1;
-        if self.counter > 2 {
-            bail!("counter overflow");
-        }
-        Ok(())
-    }
-
-    fn decrement_counter(&mut self) -> color_eyre::Result<()> {
-        self.counter -= 1;
-        Ok(())
-    }
 }
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        // let title = Title::from(" Counter App Tutorial ".bold());
-        // let instructions = Title::from(Line::from(vec![
-        //     " Decrement ".into(),
-        //     "<Left>".blue().bold(),
-        //     " Increment ".into(),
-        //     "<Right>".blue().bold(),
-        //     " Quit ".into(),
-        //     "<Q> ".blue().bold(),
-        // ]));
-        // let block = Block::bordered()
-        //     .title(title.alignment(Alignment::Center))
-        //     .title(
-        //         instructions
-        //             .alignment(Alignment::Center)
-        //             .position(Position::Bottom),
-        //     )
-        //     .border_set(border::THICK);
-
-        // let counter_text = Text::from(vec![Line::from(vec![
-        //     "Value: ".into(),
-        //     self.counter.to_string().yellow(),
-        // ])]);
-
-        // Paragraph::new(counter_text)
-        //     .centered()
-        //     .block(block)
-        //     .render(area, buf);
-
         let vertical = Layout::vertical([
             Constraint::Length(3),
             Constraint::Min(1),
