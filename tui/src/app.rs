@@ -4,13 +4,29 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::prelude::Widget;
-use ratatui::widgets::{Block, Borders};
+use ratatui::style::{Color, Style};
+use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph};
 use ratatui::{DefaultTerminal, Frame};
+use ratatui::text::{Line, Span};
 
 #[derive(Debug, Default)]
 pub struct App {
     counter: u8,
+    input_mode: InputMode,
+    input: String,
+    character_index: usize,
+    commands: Vec<String>,
     exit: bool,
+}
+
+#[derive(Debug)]
+enum InputMode {
+    DEFAULT,
+    COMMAND,
+}
+
+impl Default for InputMode {
+    fn default() -> Self { InputMode::DEFAULT }
 }
 
 impl App {
@@ -40,13 +56,66 @@ impl App {
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) -> color_eyre::Result<()> {
-        match key_event.code {
-            KeyCode::Char('q') => self.exit(),
-            KeyCode::Left => self.decrement_counter()?,
-            KeyCode::Right => self.increment_counter()?,
-            _ => {}
+        match self.input_mode {
+            InputMode::COMMAND => {
+                match key_event.code {
+                    KeyCode::Esc => self.input_mode = InputMode::DEFAULT,
+                    KeyCode::Enter => self.submit_message(),
+                    KeyCode::Char(char) => self.enter_char(char),
+                    _ => {}
+                }
+            }
+            InputMode::DEFAULT => {
+                match key_event.code {
+                    KeyCode::Char('q') => self.exit(),
+                    KeyCode::Char(':') => self.input_mode = InputMode::COMMAND,
+                    KeyCode::Left => self.decrement_counter()?,
+                    KeyCode::Right => self.increment_counter()?,
+                    KeyCode::Up => self.decrement_counter()?,
+                    _ => {}
+                }
+            }
         }
         Ok(())
+    }
+
+    fn submit_message(&mut self) {
+        self.commands.push(self.input.clone());
+        self.input.clear();
+        self.reset_cursor();
+        self.input_mode = InputMode::DEFAULT;
+    }
+
+    fn move_cursor_left(&mut self) {
+        let cursor_moved_left = self.character_index.saturating_sub(1);
+        self.character_index = self.clamp_cursor(cursor_moved_left);
+    }
+
+    fn move_cursor_right(&mut self) {
+        let cursor_moved_right = self.character_index.saturating_add(1);
+        self.character_index = self.clamp_cursor(cursor_moved_right);
+    }
+
+    fn enter_char(&mut self, new_char: char) {
+        let index = self.byte_index();
+        self.input.insert(index, new_char);
+        self.move_cursor_right();
+    }
+
+    fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
+        new_cursor_pos.clamp(0, self.input.chars().count())
+    }
+
+    fn reset_cursor(&mut self) {
+        self.character_index = 0;
+    }
+
+    fn byte_index(&self) -> usize {
+        self.input
+            .char_indices()
+            .map(|(i, _)| i)
+            .nth(self.character_index)
+            .unwrap_or(self.input.len())
     }
 
     fn exit(&mut self) {
@@ -104,13 +173,26 @@ impl Widget for &App {
 
         let [input_area, main_area] = vertical.areas(area);
 
-        Block::default()
-            .title("Input")
-            .borders(Borders::ALL)
-            .render(input_area, buf);
-        Block::default()
-            .title("Main")
-            .borders(Borders::ALL)
+        Paragraph::new(self.input.as_str())
+            .style(match self.input_mode {
+                InputMode::DEFAULT => Style::default(),
+                InputMode::COMMAND => Style::default().fg(Color::Yellow),
+            })
+            .block(Block::default().title("Input").borders(Borders::ALL))
+            .render(input_area, buf)
+        ;
+
+        let messages: Vec<ListItem> = self
+            .commands
+            .iter()
+            .enumerate()
+            .map(|(i, m)| {
+                let content = Line::from(Span::raw(format!("{i}: {m}")));
+                ListItem::new(content)
+            })
+            .collect();
+        List::new(messages)
+            .block(Block::bordered().title("Main"))
             .render(main_area, buf);
     }
 }

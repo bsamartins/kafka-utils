@@ -2,9 +2,7 @@ mod tui;
 mod app;
 
 use app::App;
-use color_eyre::eyre::{Result, WrapErr};
-use ratatui::style::Stylize;
-use ratatui::widgets::Widget;
+use color_eyre::eyre::Result;
 
 fn main() -> Result<()> {
     color_eyre::install().expect("color_eyre::install");
