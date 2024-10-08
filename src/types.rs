@@ -10,6 +10,7 @@ pub struct ListedTopic {
 #[derive(Debug)]
 pub struct ListedConsumerGroup {
     pub name: String,
+    pub state: String,
 }
 
 pub struct Broker {

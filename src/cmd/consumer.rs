@@ -31,6 +31,7 @@ pub(crate) fn list(config: ClientConfig, context: IamClientContext, timeout: Dur
         .map(|group|
             ListedConsumerGroup {
                 name: group.name().into(),
+                state: group.state().into(),
             }
         )
         .collect::<Vec<_>>();
@@ -40,17 +41,19 @@ pub(crate) fn list(config: ClientConfig, context: IamClientContext, timeout: Dur
 }
 
 impl Tabled for ListedConsumerGroup {
-    const LENGTH: usize = 5;
+    const LENGTH: usize = 2;
 
     fn fields(&self) -> Vec<Cow<'_, str>> {
         vec![
             self.name.as_str().into(),
+            self.state.as_str().into(),
         ]
     }
 
     fn headers() -> Vec<Cow<'static, str>> {
         vec![
             "Name".into(),
+            "State".into(),
         ]
     }
 }
