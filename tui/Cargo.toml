@@ -3,10 +3,6 @@ name = "kafka-utils-tui"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = "kafka-utils-tui"
-path = "src"
-
 [dependencies]
 crossterm = "0.28.1"
 ratatui = "0.28.1"
