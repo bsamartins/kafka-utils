@@ -5,7 +5,7 @@ mod cmd;
 
 use crate::cmd::broker::{ClusterArgs, ClusterCommands};
 use crate::cmd::topic::{TopicsArgs, TopicsCommands};
-use crate::cmd::consumer::{ConsumerArgs, ConsumerCommands};
+use crate::cmd::consumer::{ConsumerArgs, ConsumerCommands, ListConsumerArgs};
 use crate::kafka::IamClientContext;
 use aws_types::region::Region;
 use core::time::Duration;
@@ -85,10 +85,10 @@ async fn main() {
             }
         }
         Commands::Consumers(consumer) => {
-            let consumer_cmd = consumer.command.unwrap_or(ConsumerCommands::List);
+            let consumer_cmd = consumer.command.unwrap_or(ConsumerCommands::List(ListConsumerArgs { consumer_name: None }));
             match consumer_cmd {
-                ConsumerCommands::List => {
-                    cmd::consumer::list(client_config, context, timeout)
+                ConsumerCommands::List(args) => {
+                    cmd::consumer::list(client_config, context, timeout, args.consumer_name)
                 }
             }
         }
