@@ -3,12 +3,9 @@ mod cmd;
 use crate::cmd::broker::{ClusterArgs, ClusterCommands};
 use crate::cmd::consumer::{ConsumerArgs, ConsumerCommands, ListConsumerArgs};
 use crate::cmd::topic::{TopicsArgs, TopicsCommands};
-use aws_types::region::Region;
 use clap::{Parser, Subcommand, ValueEnum};
 use common::kafka;
-use common::kafka::client::IamClientContext;
 use core::time::Duration;
-use tokio::runtime::Handle;
 
 #[derive(Debug, Parser)] // requires `derive` feature
 #[command(name = "kafka-utils")]
@@ -55,19 +52,20 @@ impl std::fmt::Display for ColorWhen {
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
-    let client_config = kafka::client::create_config(cli.bootstrap_servers, cli.iam_auth);
-    let aws_region = String::from(cli.aws_region.to_owned());
-    let region = Region::new(aws_region);
-    let context =
-        IamClientContext::new(region, Handle::current());
-    let timeout = Duration::from_millis(cli.timeout.into());
+
+    let config = kafka::client::create_config(
+        cli.bootstrap_servers,
+        cli.iam_auth,
+        cli.aws_region,
+        Duration::from_millis(cli.timeout.into()),
+    );
 
     match cli.command {
         Commands::Cluster(cluster) => {
             let cluster_cmd = cluster.command.unwrap_or(ClusterCommands::Brokers);
             match cluster_cmd {
                 ClusterCommands::Brokers => {
-                    cmd::broker::list_brokers_cmd(client_config, context, timeout)
+                    cmd::broker::list_brokers_cmd(config)
                 }
             }
         }
@@ -75,10 +73,10 @@ async fn main() {
             let topics_cmd = topics.command.unwrap_or(TopicsCommands::List);
             match topics_cmd {
                 TopicsCommands::List => {
-                    cmd::topic::list_topics_cmd(client_config, context, timeout);
+                    cmd::topic::list_topics_cmd(config);
                 }
                 TopicsCommands::Delete(args) => {
-                    cmd::topic::delete_topics_cmd(client_config, context, args.run, args.topic_name, timeout).await;
+                    cmd::topic::delete_topics_cmd(config, args.run, args.topic_name).await;
                 }
             }
         }
@@ -86,10 +84,10 @@ async fn main() {
             let consumer_cmd = consumer.command.unwrap_or(ConsumerCommands::List(ListConsumerArgs { consumer_group: None }));
             match consumer_cmd {
                 ConsumerCommands::List(args) => {
-                    cmd::consumer::list(client_config, context, timeout, args.consumer_group)
+                    cmd::consumer::list(config, args.consumer_group)
                 }
                 ConsumerCommands::Delete(args) => {
-                    cmd::consumer::delete(client_config, context, timeout, args.consumer_group).await
+                    cmd::consumer::delete(config, args.consumer_group).await
                 }
             }
         }

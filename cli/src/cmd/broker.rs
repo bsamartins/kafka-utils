@@ -1,15 +1,13 @@
 use crate::cmd::table;
 use clap::{Args, Subcommand};
 use common::kafka;
-use common::kafka::client::IamClientContext;
+use common::kafka::client::Config;
 use common::kafka::types::ListBrokerEntry;
-use rdkafka::ClientConfig;
 use std::borrow::Cow;
-use std::time::Duration;
 use tabled::Tabled;
 
-pub fn list_brokers_cmd(client_config: ClientConfig, context: IamClientContext, timeout: Duration) {
-    let brokers = kafka::broker::list_brokers(client_config, context, timeout)
+pub fn list_brokers_cmd(config: Config) {
+    let brokers = kafka::broker::list_brokers(config)
         .iter().map(|e| ListBrokerTable(e.clone()))
         .collect();
     println!("{}", table::create(brokers))

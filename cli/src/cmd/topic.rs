@@ -1,18 +1,16 @@
-use common::kafka;
-use clap::{Args, Subcommand};
-use rdkafka::admin::AdminOptions;
-use rdkafka::ClientConfig;
-use std::borrow::Cow;
-use std::time::Duration;
-use tabled::Tabled;
-use common::kafka::client::IamClientContext;
-use common::kafka::types::ListTopicEntry;
 use crate::cmd::table;
+use clap::{Args, Subcommand};
+use common::kafka;
+use common::kafka::client::Config;
+use common::kafka::types::ListTopicEntry;
+use rdkafka::admin::AdminOptions;
+use std::borrow::Cow;
+use tabled::Tabled;
 
-pub fn list_topics_cmd(config: ClientConfig, context: IamClientContext, timeout: Duration) {
+pub fn list_topics_cmd(config: Config) {
     println!("Listing topics");
 
-    let topics: Vec<ListTopicTable> = kafka::topic::list_topics(config, context, timeout)
+    let topics: Vec<ListTopicTable> = kafka::topic::list_topics(config)
         .iter().map(|e| ListTopicTable(e.clone()))
         .collect::<Vec<_>>();
 
@@ -22,8 +20,8 @@ pub fn list_topics_cmd(config: ClientConfig, context: IamClientContext, timeout:
     println!("{table}")
 }
 
-pub async fn delete_topics_cmd(client_config: ClientConfig, context: IamClientContext, run: bool, topic_name: Option<String>, timeout: Duration) {
-    let topics = kafka::topic::list_topics_names(client_config.clone(), context.clone(), timeout);
+pub async fn delete_topics_cmd(config: Config, run: bool, topic_name: Option<String>) {
+    let topics = kafka::topic::list_topics_names(config.clone());
     let delete_topics: Vec<&str> = topics
         .iter()
         .filter(|topic|
@@ -38,7 +36,7 @@ pub async fn delete_topics_cmd(client_config: ClientConfig, context: IamClientCo
     if run {
         println!("Deleting topics: {delete_topics:?}");
         let admin_options = AdminOptions::new();
-        let result = kafka::client::create_admin_client(client_config, context.clone()).delete_topics(&delete_topics, &admin_options).await;
+        let result = kafka::client::create_admin_client(config).delete_topics(&delete_topics, &admin_options).await;
         match result {
             Ok(topic_results) => {
                 topic_results.iter()

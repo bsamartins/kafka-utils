@@ -1,12 +1,10 @@
-use crate::kafka::client::{create_base_client, IamClientContext};
+use crate::kafka::client::{create_base_client, Config};
 use crate::kafka::types::ListBrokerEntry;
 use rdkafka::consumer::Consumer;
-use rdkafka::ClientConfig;
-use std::time::Duration;
 
-pub fn list_brokers<'a>(config: ClientConfig, context: IamClientContext, timeout: Duration) -> Vec<ListBrokerEntry> {
-    let result = create_base_client(config, context)
-        .fetch_metadata(None, timeout);
+pub fn list_brokers<'a>(config: Config) -> Vec<ListBrokerEntry> {
+    let result = create_base_client(config.clone())
+        .fetch_metadata(None, config.timeout);
 
     result.expect("Failed to fetch metadata")
         .brokers()

@@ -1,20 +1,19 @@
-use crate::kafka::client::{create_base_client, IamClientContext};
+use crate::kafka::client::{create_base_client, Config, IamClientContext};
 use crate::kafka::types::ListTopicEntry;
 use itertools::Itertools;
 use rdkafka::consumer::{BaseConsumer, Consumer};
 use rdkafka::metadata::MetadataTopic;
-use rdkafka::ClientConfig;
 use std::collections::HashMap;
 use std::time::Duration;
 
-pub fn list_topics(config: ClientConfig, context: IamClientContext, timeout: Duration) -> Vec<ListTopicEntry> {
-    let client = create_base_client(config, context);
+pub fn list_topics(config: Config) -> Vec<ListTopicEntry> {
+    let client = create_base_client(config.clone());
     let metadata = client
-        .fetch_metadata(None, timeout)
+        .fetch_metadata(None, config.timeout)
         .expect("Failed to fetch metadata");
 
     let topics_metadata = metadata.topics();
-    let topic_offsets = fetch_topics_offsets(client, timeout, topics_metadata);
+    let topic_offsets = fetch_topics_offsets(client, config.timeout, topics_metadata);
 
     let mut topics = topics_metadata
         .iter().map(|topic| {
@@ -60,9 +59,9 @@ fn fetch_topics_offsets(client: BaseConsumer<IamClientContext>, timeout: Duratio
     ).into_group_map()
 }
 
-pub fn list_topics_names(config: ClientConfig, context: IamClientContext, timeout: Duration) -> Vec<String> {
-    let result = create_base_client(config, context)
-        .fetch_metadata(None, timeout);
+pub fn list_topics_names(config: Config) -> Vec<String> {
+    let result = create_base_client(config.clone())
+        .fetch_metadata(None, config.timeout);
 
     let mut topics = result.expect("Failed to fetch metadata").topics()
         .iter().map(|topic| topic.name().to_string())

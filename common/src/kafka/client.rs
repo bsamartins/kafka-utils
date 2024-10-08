@@ -1,16 +1,17 @@
+use crate::kafka::iam::generate_auth_token;
+use aws_types::region::Region;
+use rdkafka::admin::AdminClient;
+use rdkafka::client::OAuthToken;
+use rdkafka::consumer::{BaseConsumer, ConsumerContext};
+use rdkafka::{ClientConfig, ClientContext};
 use std::error::Error;
 use std::thread;
 use std::time::Duration;
-use aws_types::region::Region;
-use rdkafka::admin::AdminClient;
-use rdkafka::{ClientConfig, ClientContext};
-use rdkafka::client::OAuthToken;
-use rdkafka::consumer::{BaseConsumer, ConsumerContext};
 use tokio::runtime::Handle;
 use tokio::time::timeout;
-use crate::kafka::iam::generate_auth_token;
 
-pub fn create_config(bootstrap_servers: String, iam_auth: bool) -> ClientConfig {
+pub fn create_config(bootstrap_servers: String, iam_auth: bool, region: String, timeout: Duration) -> Config {
+    let aws_region = Region::new(region);
     let mut config = ClientConfig::new();
     config.set("bootstrap.servers", bootstrap_servers);
     if iam_auth {
@@ -18,18 +19,24 @@ pub fn create_config(bootstrap_servers: String, iam_auth: bool) -> ClientConfig 
         config.set("security.protocol", "sasl_ssl");
         config.set("sasl.mechanisms", "OAUTHBEARER");
     }
-    config
+    Config {
+        client_config: config,
+        context: IamClientContext::new(aws_region, Handle::current()),
+        timeout,
+    }
 }
 
-pub fn create_base_client(config: ClientConfig, context: IamClientContext) -> BaseConsumer<IamClientContext> {
+pub fn create_base_client(config: Config) -> BaseConsumer<IamClientContext> {
     config
-        .create_with_context(context)
+        .client_config
+        .create_with_context(config.context)
         .expect("Consumer creation failed")
 }
 
-pub fn create_admin_client(config: ClientConfig, context: IamClientContext) -> AdminClient<IamClientContext> {
+pub fn create_admin_client(config: Config) -> AdminClient<IamClientContext> {
     config
-        .create_with_context(context)
+        .client_config
+        .create_with_context(config.context)
         .expect("admin client creation failed")
 }
 
@@ -66,3 +73,10 @@ impl ClientContext for IamClientContext {
 }
 
 impl ConsumerContext for IamClientContext {}
+
+#[derive(Clone)]
+pub struct Config {
+    client_config: ClientConfig,
+    context: IamClientContext,
+    pub(crate) timeout: Duration,
+}
