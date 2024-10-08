@@ -5,6 +5,7 @@ mod cmd;
 
 use crate::cmd::broker::{ClusterArgs, ClusterCommands};
 use crate::cmd::topic::{TopicsArgs, TopicsCommands};
+use crate::cmd::consumer::{ConsumerArgs, ConsumerCommands};
 use crate::kafka::IamClientContext;
 use aws_types::region::Region;
 use clap::{Args, Parser, Subcommand, ValueEnum};
@@ -30,6 +31,8 @@ struct Cli {
 enum Commands {
     #[command(arg_required_else_help = true)]
     Cluster(ClusterArgs),
+    #[command(arg_required_else_help = true)]
+    Consumers(ConsumerArgs),
     #[command(arg_required_else_help = true)]
     Topics(TopicsArgs),
 }
@@ -76,6 +79,14 @@ async fn main() {
                 }
                 TopicsCommands::Delete(args) => {
                     cmd::topic::delete_topics_cmd(client_config, context, args.run, args.topic_name, cli.timeout).await;
+                }
+            }
+        }
+        Commands::Consumers(consumer) => {
+            let consumer_cmd = consumer.command.unwrap_or(ConsumerCommands::List);
+            match consumer_cmd {
+                ConsumerCommands::List => {
+                    cmd::consumer::list(client_config, context, cli.timeout)
                 }
             }
         }

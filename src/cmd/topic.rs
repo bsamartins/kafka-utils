@@ -1,31 +1,19 @@
-use std::borrow::Cow;
-use clap::{Args, Subcommand};
-use rdkafka::admin::AdminOptions;
-use rdkafka::ClientConfig;
-use tabled::settings::{Color, Style};
-use tabled::settings::object::{Columns, Rows};
-use tabled::settings::themes::Colorization;
-use tabled::{Table, Tabled};
-use crate::cmd::table;
 use crate::kafka;
 use crate::kafka::IamClientContext;
 use crate::types::ListedTopic;
+use clap::{Args, Subcommand};
+use rdkafka::admin::AdminOptions;
+use rdkafka::ClientConfig;
+use std::borrow::Cow;
+use tabled::Tabled;
+use crate::cmd::table;
 
 pub fn list_topics_cmd(config: ClientConfig, context: IamClientContext, timeout: u64) {
     println!("Listing topics");
 
     let topics = kafka::list_topics(config, context, timeout);
-    let style = Style::modern()
-        .remove_horizontal();
 
-    let table = Table::new(topics.iter().clone())
-        .with(style)
-        .with(table::even_odd_rows(topics.len(), true, Color::empty(), table::odd_color()))
-        .with(Colorization::exact([table::head_color()], Rows::first()))
-        .modify(Columns::single(1), table::NUMERIC_SETTINGS)
-        .modify(Columns::single(2), table::NUMERIC_SETTINGS)
-        .modify(Columns::single(3), table::NUMERIC_SETTINGS)
-        .modify(Columns::single(4), table::NUMERIC_SETTINGS)
+    let table = table::create(topics)
         .to_string();
 
     println!("{table}")
