@@ -85,10 +85,13 @@ async fn main() {
             }
         }
         Commands::Consumers(consumer) => {
-            let consumer_cmd = consumer.command.unwrap_or(ConsumerCommands::List(ListConsumerArgs { consumer_name: None }));
+            let consumer_cmd = consumer.command.unwrap_or(ConsumerCommands::List(ListConsumerArgs { consumer_group: None }));
             match consumer_cmd {
                 ConsumerCommands::List(args) => {
-                    cmd::consumer::list(client_config, context, timeout, args.consumer_name)
+                    cmd::consumer::list(client_config, context, timeout, args.consumer_group)
+                }
+                ConsumerCommands::Delete(args) => {
+                    cmd::consumer::delete(client_config, context, timeout, args.consumer_group).await
                 }
             }
         }
