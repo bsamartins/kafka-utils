@@ -11,11 +11,11 @@ pub struct LocalTable {
 }
 
 impl LocalTable {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(content_size: usize) -> Self {
         Self {
             colors: TableColors::new(&SLATE),
             state: TableState::default(),
-            scroll_state: ScrollbarState::default(),
+            scroll_state: ScrollbarState::new(content_size),
         }
     }
 }

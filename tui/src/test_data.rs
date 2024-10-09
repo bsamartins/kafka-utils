@@ -51,7 +51,7 @@ pub fn generate_fake_names() -> Vec<Data> {
         .collect_vec()
 }
 
-fn constraint_len_calculator(items: &[Data]) -> (u16, u16, u16) {
+pub(crate) fn constraint_len_calculator(items: &[Data]) -> (u16, u16, u16) {
     let name_len = items
         .iter()
         .map(Data::name)

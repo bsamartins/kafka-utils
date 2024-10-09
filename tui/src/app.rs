@@ -1,5 +1,5 @@
 use crate::table::LocalTable;
-use crate::test_data::{generate_fake_names, Data};
+use crate::test_data::{generate_fake_names, Data, constraint_len_calculator};
 use color_eyre::eyre::WrapErr;
 use convert_case::{Case, Casing};
 use crossterm::event;
@@ -61,15 +61,16 @@ impl Command {
 impl App {
 
     pub fn new() -> Self {
+        let data = generate_fake_names();
         Self {
             input_mode: Default::default(),
             input: Default::default(),
             commands: vec![],
             command: None,
             error: None,
-            table: None,
-            data: generate_fake_names(),
-            longest_item_lens: (0, 0, 0),
+            table: Some(LocalTable::new(data.len())),
+            data: data.clone(),
+            longest_item_lens: constraint_len_calculator(&data),
             exit: false,
         }
     }
@@ -145,7 +146,7 @@ impl App {
                 self.command = Some(cmd);
                 self.input.reset();
                 self.input_mode = InputMode::DEFAULT;
-                self.table = Some(LocalTable::new());
+                // self.table = Some(LocalTable::new());
                 self.clear_error();
             }
             _ => {
@@ -263,7 +264,8 @@ impl App {
             ]))
             .bg(table.colors.buffer_bg)
             .highlight_spacing(HighlightSpacing::Always)
-            .block(block);
+            // .block(block)
+            ;
 
         t.render(area, buf)
     }
