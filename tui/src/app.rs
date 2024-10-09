@@ -6,10 +6,11 @@ use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Flex, Layout, Rect};
-use ratatui::prelude::Widget;
+use ratatui::prelude::{Alignment, Widget};
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::{Block, Borders, Cell, HighlightSpacing, List, ListItem, Padding, Paragraph, Row, Table};
+use ratatui::widgets::block::Title;
+use ratatui::widgets::{Block, Borders, Cell, Clear, HighlightSpacing, List, ListItem, Paragraph, Row, Table};
 use ratatui::{DefaultTerminal, Frame};
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, IntoStaticStr};
@@ -133,8 +134,14 @@ impl App {
                                 match self.command {
                                     Some(_) => {
                                         match key_event.code {
-                                            KeyCode::Up => { self.clone().table.unwrap().state.select_previous() }
-                                            KeyCode::Down => { self.clone().table.unwrap().state.select_next() }
+                                            KeyCode::Up => {
+                                                self.clone().previous();
+                                                self.set_error_message(format!("Up - {}", self.clone().table.unwrap().state.selected().unwrap()))
+                                            }
+                                            KeyCode::Down => {
+                                                self.clone().next();
+                                                self.set_error_message(format!("Down - {}", self.clone().table.unwrap().state.selected().unwrap()))
+                                            }
                                             _ => {}
                                         }
                                     }
@@ -175,6 +182,34 @@ impl App {
     }
 
     fn has_error(&self) -> bool { self.error.is_some() }
+
+    pub fn next(&mut self) {
+        let i = match self.clone().table.unwrap().state.selected() {
+            Some(i) => {
+                if i >= self.data.len() - 1 {
+                    0
+                } else {
+                    i + 1
+                }
+            }
+            None => 0,
+        };
+        self.clone().table.unwrap().state.select(Some(i));
+    }
+
+    pub fn previous(&mut self) {
+        let i = match self.clone().table.unwrap().state.selected() {
+            Some(i) => {
+                if i == 0 {
+                    self.data.len() - 1
+                } else {
+                    i - 1
+                }
+            }
+            None => 0,
+        };
+        self.clone().table.unwrap().state.select(Some(i));
+    }
 
     fn exit(&mut self) {
         self.exit = true;
@@ -240,8 +275,7 @@ impl App {
                 "".into(),
             ]))
             .bg(table.colors.buffer_bg)
-            .highlight_spacing(HighlightSpacing::Always)
-            .block(block);
+            .highlight_spacing(HighlightSpacing::Always);
 
         t.render(area, buf)
     }
@@ -283,16 +317,17 @@ impl Widget for &App {
         let mut main_block = Block::bordered();
         main_block = match &self.command {
             Some(cmd) => {
-                let enum_str: &str = cmd.into();
-                main_block.title(enum_str)
+                let string_cmd: &str = cmd.into();
+                let title = string_cmd.to_case(Case::Kebab);
+                main_block.title(Title::from(title).alignment(Alignment::Center))
             },
             None => main_block
         };
 
         match &self.command {
             Some(cmd) => {
-                let table = &self.table;
-                self.render_command_view(cmd, main_block, main_area, buf)
+                main_block.clone().render(main_area, buf);
+                self.render_command_view(cmd, main_block.inner(main_area), buf)
             },
             None => {
                 List::new(messages)
@@ -303,10 +338,14 @@ impl Widget for &App {
 
         if self.has_error() {
             let message = self.error.clone().unwrap();
-            let block = Block::bordered().title("error");
+            let block = Block::bordered()
+                .title("error")
+                .title_alignment(Alignment::Center)
+                .title_style(Style::default())
+                .bg(Color::Black);
 
             let pop_area = popup_area(area, 60, 20);
-
+            Clear.render(pop_area, buf);
             Paragraph::new(message)
                 .style(Color::Red)
                 .block(block)
