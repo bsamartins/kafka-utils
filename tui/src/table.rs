@@ -1,21 +1,18 @@
 use ratatui::style::palette::tailwind::{Palette, SLATE};
 use ratatui::style::Color;
-use ratatui::widgets::{ScrollbarState, TableState};
+use ratatui::widgets::TableState;
 
 #[derive(Debug, Clone)]
 pub struct LocalTable {
     pub(crate) colors: TableColors,
     pub(crate) state: TableState,
-    pub(crate) scroll_state: ScrollbarState,
-
 }
 
 impl LocalTable {
-    pub(crate) fn new(content_size: usize) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             colors: TableColors::new(&SLATE),
             state: TableState::default(),
-            scroll_state: ScrollbarState::new(content_size),
         }
     }
 }

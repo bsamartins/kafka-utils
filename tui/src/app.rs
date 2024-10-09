@@ -5,11 +5,11 @@ use convert_case::{Case, Casing};
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::buffer::Buffer;
-use ratatui::layout::{Constraint, Flex, Layout, Margin, Rect};
+use ratatui::layout::{Constraint, Flex, Layout, Rect};
 use ratatui::prelude::Widget;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::{Block, Borders, Cell, HighlightSpacing, List, ListItem, Paragraph, Row, Scrollbar, ScrollbarOrientation, Table};
+use ratatui::widgets::{Block, Borders, Cell, HighlightSpacing, List, ListItem, Padding, Paragraph, Row, Table};
 use ratatui::{DefaultTerminal, Frame};
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, IntoStaticStr};
@@ -68,7 +68,7 @@ impl App {
             commands: vec![],
             command: None,
             error: None,
-            table: Some(LocalTable::new(data.len())),
+            table: Some(LocalTable::new()),
             data: data.clone(),
             longest_item_lens: constraint_len_calculator(&data),
             exit: false,
@@ -129,7 +129,19 @@ impl App {
                         match key_event.code {
                             KeyCode::Char('q') => self.exit(),
                             KeyCode::Char(':') => self.input_mode = InputMode::COMMAND,
-                            _ => {}
+                            _ => {
+                                match self.command {
+                                    Some(_) => {
+                                        match key_event.code {
+                                            KeyCode::Up => { self.clone().table.unwrap().state.select_previous() }
+                                            KeyCode::Down => { self.clone().table.unwrap().state.select_next() }
+                                            _ => {}
+                                        }
+                                    }
+                                    _ => {}
+
+                                }
+                            }
                         }
                     }
                 }
@@ -180,26 +192,8 @@ impl App {
         let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(3)]);
         let rects = vertical.split(area);
 
-        self.render_table(block.clone(), rects[0], buf);
-        self.clone().render_scrollbar(block.clone(), rects[0], buf);
+        self.render_table(block, rects[0], buf);
     }
-    fn render_scrollbar(self, block: Block, area: Rect, buf: &mut Buffer) {
-        let scrollbar = Scrollbar::default()
-            .orientation(ScrollbarOrientation::VerticalRight)
-            .begin_symbol(None)
-            .end_symbol(None);
-
-        ratatui::widgets::StatefulWidget::render(
-            scrollbar,
-            area.inner(Margin {
-                vertical: 1,
-                horizontal: 1,
-            }),
-            buf,
-            &mut self.table.unwrap().scroll_state,
-        );
-    }
-
     fn render_table(&self, block: Block, area: Rect, buf: &mut Buffer) {
         let table = self.clone().table.unwrap();
         let header_style = Style::default()
@@ -225,7 +219,7 @@ impl App {
                 .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
                 .collect::<Row>()
                 .style(Style::new().fg(table.colors.row_fg).bg(color))
-                .height(4)
+                .height(2)
         });
         let bar = " █ ";
         let t = Table::new(
@@ -247,8 +241,7 @@ impl App {
             ]))
             .bg(table.colors.buffer_bg)
             .highlight_spacing(HighlightSpacing::Always)
-            // .block(block)
-            ;
+            .block(block);
 
         t.render(area, buf)
     }
