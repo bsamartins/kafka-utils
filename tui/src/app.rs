@@ -1,23 +1,22 @@
 use crate::table::LocalTable;
-use crate::test_data::Data;
+use crate::test_data::{generate_fake_names, Data};
 use color_eyre::eyre::WrapErr;
-use color_eyre::owo_colors::OwoColorize;
 use convert_case::{Case, Casing};
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::buffer::Buffer;
-use ratatui::layout::{Constraint, Flex, Layout, Rect};
+use ratatui::layout::{Constraint, Flex, Layout, Margin, Rect};
 use ratatui::prelude::Widget;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::{Block, Borders, Cell, HighlightSpacing, List, ListItem, Paragraph, Row, Table};
+use ratatui::widgets::{Block, BorderType, Borders, Cell, HighlightSpacing, List, ListItem, Paragraph, Row, Scrollbar, ScrollbarOrientation, Table};
 use ratatui::{DefaultTerminal, Frame};
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, IntoStaticStr};
 use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct App {
     input_mode: InputMode,
     input: Input,
@@ -60,6 +59,20 @@ impl Command {
 }
 
 impl App {
+
+    pub fn new() -> Self {
+        Self {
+            input_mode: Default::default(),
+            input: Default::default(),
+            commands: vec![],
+            command: None,
+            error: None,
+            table: None,
+            data: generate_fake_names(),
+            longest_item_lens: (0, 0, 0),
+            exit: false,
+        }
+    }
 
     /// runs the application's main loop until the user quits
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> color_eyre::Result<()> {
@@ -154,42 +167,53 @@ impl App {
         self.exit = true;
     }
 
-    // fn render_scrollbar(&mut self, frame: &mut Frame, area: Rect) {
-    //     frame.render_stateful_widget(
-    //         Scrollbar::default()
-    //             .orientation(ScrollbarOrientation::VerticalRight)
-    //             .begin_symbol(None)
-    //             .end_symbol(None),
-    //         area.inner(Margin {
-    //             vertical: 1,
-    //             horizontal: 1,
-    //         }),
-    //         &mut self.table.scroll_state,
-    //     );
-    // }
-    //
-    // fn render_footer(&self, frame: &mut Frame, area: Rect) {
-    //     let info_footer = Paragraph::new(Line::from("footer"))
-    //         .style(
-    //             Style::new()
-    //                 .fg(self.colors.row_fg)
-    //                 .bg(self.colors.buffer_bg),
-    //         )
-    //         .centered()
-    //         .block(
-    //             Block::bordered()
-    //                 .border_type(BorderType::Double)
-    //                 .border_style(Style::new().fg(self.colors.footer_border_color)),
-    //         );
-    //     frame.render_widget(info_footer, area);
-    // }
-
     fn render_command_view(&self, cmd: &Command, block: Block, area: Rect, buf: &mut Buffer) {
         match cmd {
             Command::ListTopics => {
-                self.render_table(block, area, buf);
+                self.draw_table(block, area, buf);
             }
         }
+    }
+
+    fn draw_table(&self, block: Block, area: Rect, buf: &mut Buffer) {
+        let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(3)]);
+        let rects = vertical.split(area);
+
+        self.render_table(block, rects[0], buf);
+        self.clone().render_scrollbar(rects[0], buf);
+        self.clone().render_footer(rects[1], buf);
+    }
+    fn render_scrollbar(self, area: Rect, buf: &mut Buffer) {
+        let scrollbar = Scrollbar::default()
+            .orientation(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(None)
+            .end_symbol(None);
+
+        ratatui::widgets::StatefulWidget::render(
+            scrollbar,
+            area.inner(Margin {
+                vertical: 1,
+                horizontal: 1,
+            }),
+            buf,
+            &mut self.table.unwrap().scroll_state,
+        );
+    }
+
+    fn render_footer(&self, area: Rect, buf: &mut Buffer) {
+        let info_footer = Paragraph::new(Line::from("footer"))
+            .style(
+                Style::new()
+                    .fg(self.clone().table.unwrap().colors.row_fg)
+                    .bg(self.clone().table.unwrap().colors.buffer_bg),
+            )
+            .centered()
+            .block(
+                Block::bordered()
+                    .border_type(BorderType::Double)
+                    .border_style(Style::new().fg(self.clone().table.unwrap().colors.footer_border_color)),
+            );
+        info_footer.render(area, buf);
     }
 
     fn render_table(&self, block: Block, area: Rect, buf: &mut Buffer) {

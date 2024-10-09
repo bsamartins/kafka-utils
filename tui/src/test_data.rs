@@ -26,7 +26,7 @@ impl Data {
     }
 }
 
-fn generate_fake_names() -> Vec<Data> {
+pub fn generate_fake_names() -> Vec<Data> {
     use fakeit::{address, contact, name};
 
     (0..20)
