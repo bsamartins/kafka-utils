@@ -75,26 +75,38 @@ impl App {
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) -> color_eyre::Result<()> {
-        match self.input_mode {
-            InputMode::COMMAND => {
-                match key_event.code {
-                    KeyCode::Esc => {
-                        self.input_mode = InputMode::DEFAULT;
-                        self.input.reset();
-                        self.error = None;
-                    },
-                    KeyCode::Enter => self.execute_command(),
-                    _ => {
-                        self.input.handle_event(&Event::Key(key_event));
+        match key_event.code {
+            KeyCode::Char('c') if key_event.modifiers == KeyModifiers::CONTROL => self.exit(),
+            _ => {
+                match self.input_mode {
+                    InputMode::COMMAND => {
+                        match key_event.code {
+                            KeyCode::Esc => {
+                                if !self.has_error() {
+                                    self.input_mode = InputMode::DEFAULT;
+                                    self.input.reset();
+                                }
+                                self.clear_error()
+                            },
+                            KeyCode::Enter => {
+                                if !self.has_error() {
+                                    self.execute_command();
+                                }
+                            }
+                            _ => {
+                                if !self.has_error() {
+                                    self.input.handle_event(&Event::Key(key_event));
+                                }
+                            }
+                        }
                     }
-                }
-            }
-            InputMode::DEFAULT => {
-                match key_event.code {
-                    KeyCode::Char('q') => self.exit(),
-                    KeyCode::Char('c') if key_event.modifiers == KeyModifiers::CONTROL => self.exit(),
-                    KeyCode::Char(':') => self.input_mode = InputMode::COMMAND,
-                    _ => {}
+                    InputMode::DEFAULT => {
+                        match key_event.code {
+                            KeyCode::Char('q') => self.exit(),
+                            KeyCode::Char(':') => self.input_mode = InputMode::COMMAND,
+                            _ => {}
+                        }
+                    }
                 }
             }
         }
@@ -109,13 +121,22 @@ impl App {
                 self.command = Some(cmd);
                 self.input.reset();
                 self.input_mode = InputMode::DEFAULT;
-                self.error = None;
+                self.clear_error();
             }
             _ => {
-                self.error = Some(format!("Unknown command '{}'", self.input));
+                self.set_error_message(format!("Unknown command '{}'", self.input));
             }
         }
     }
+
+    fn set_error_message(&mut self, message: String) {
+        self.error = Some(message);
+    }
+    fn clear_error(&mut self) {
+        self.error = None;
+    }
+
+    fn has_error(&self) -> bool { self.error.is_some() }
 
     fn exit(&mut self) {
         self.exit = true;
@@ -175,9 +196,8 @@ impl Widget for &App {
             }
         }
 
-        let error= &self.error;
-        if error.is_some() {
-            let message = error.clone().unwrap();
+        if self.has_error() {
+            let message = self.error.clone().unwrap();
             let block = Block::bordered().title("error");
 
             let pop_area = popup_area(area, 60, 20);
