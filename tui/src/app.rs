@@ -187,7 +187,7 @@ impl Widget for &App {
 
         match &self.command {
             Some(cmd) => {
-                render_command_view(cmd, main_block)
+                render_command_view(cmd, main_block, main_area, buf)
             },
             None => {
                 List::new(messages)
@@ -218,6 +218,8 @@ fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
     area
 }
 
-fn render_command_view(cmd: &Command, block: Block) {
-    todo!()
+fn render_command_view(cmd: &Command, block: Block, area: Rect, buf: &mut Buffer) {
+    Paragraph::new("TODO()")
+        .block(block)
+        .render(area, buf)
 }
