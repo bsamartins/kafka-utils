@@ -4,12 +4,8 @@ use color_eyre::eyre::WrapErr;
 use convert_case::{Case, Casing};
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use ratatui::buffer::Buffer;
-use ratatui::layout::{Constraint, Flex, Layout, Rect};
-use ratatui::prelude::{Alignment, Widget};
-use ratatui::style::{Color, Modifier, Style, Stylize};
-use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::block::Title;
+use ratatui::layout::Flex;
+use ratatui::prelude::{Alignment, Buffer, Color, Constraint, Layout, Line, Modifier, Rect, Span, Style, Stylize, Text, Widget};
 use ratatui::widgets::{Block, Borders, Cell, Clear, HighlightSpacing, List, ListItem, Paragraph, Row, Table};
 use ratatui::{DefaultTerminal, Frame};
 use strum::IntoEnumIterator;
@@ -27,7 +23,7 @@ pub struct App {
 
     error: Option<String>,
 
-    table: Option<LocalTable>,
+    table: LocalTable,
 
     data: Vec<Data>,
     longest_item_lens: (u16, u16, u16),
@@ -69,7 +65,7 @@ impl App {
             commands: vec![],
             command: None,
             error: None,
-            table: Some(LocalTable::new()),
+            table: LocalTable::new(),
             data: data.clone(),
             longest_item_lens: constraint_len_calculator(&data),
             exit: false,
@@ -85,8 +81,8 @@ impl App {
         Ok(())
     }
 
-    fn draw(&self, frame: &mut Frame) {
-        frame.render_widget(self, frame.area());
+    fn draw(&mut self, frame: &mut Frame) {
+        frame.render_stateful_widget(self.clone(), frame.area(), self);
     }
 
     fn handle_events(&mut self) -> color_eyre::Result<()> {
@@ -135,12 +131,12 @@ impl App {
                                     Some(_) => {
                                         match key_event.code {
                                             KeyCode::Up => {
-                                                self.clone().previous();
-                                                self.set_error_message(format!("Up - {}", self.clone().table.unwrap().state.selected().unwrap()))
+                                                self.previous();
+                                                self.set_error_message(format!("Up - {}", self.table.state.selected().map(|v| v.to_string()).unwrap_or("None".to_string())));
                                             }
                                             KeyCode::Down => {
-                                                self.clone().next();
-                                                self.set_error_message(format!("Down - {}", self.clone().table.unwrap().state.selected().unwrap()))
+                                                self.next();
+                                                self.set_error_message(format!("Down - {}", self.table.state.selected().map(|v| v.to_string()).unwrap_or("None".to_string())));
                                             }
                                             _ => {}
                                         }
@@ -184,7 +180,7 @@ impl App {
     fn has_error(&self) -> bool { self.error.is_some() }
 
     pub fn next(&mut self) {
-        let i = match self.clone().table.unwrap().state.selected() {
+        let i = match self.table.state.selected() {
             Some(i) => {
                 if i >= self.data.len() - 1 {
                     0
@@ -194,11 +190,11 @@ impl App {
             }
             None => 0,
         };
-        self.clone().table.unwrap().state.select(Some(i));
+        self.table.state.select(Some(i));
     }
 
     pub fn previous(&mut self) {
-        let i = match self.clone().table.unwrap().state.selected() {
+        let i = match self.table.state.selected() {
             Some(i) => {
                 if i == 0 {
                     self.data.len() - 1
@@ -208,29 +204,29 @@ impl App {
             }
             None => 0,
         };
-        self.clone().table.unwrap().state.select(Some(i));
+        self.table.state.select(Some(i));
     }
 
     fn exit(&mut self) {
         self.exit = true;
     }
 
-    fn render_command_view(&self, cmd: &Command, area: Rect, buf: &mut Buffer) {
+    fn render_command_view(&self, cmd: &Command, area: Rect, buf: &mut Buffer, state: &mut App) {
         match cmd {
             Command::ListTopics => {
-                self.draw_table(area, buf);
+                self.draw_table(area, buf, state);
             }
         }
     }
 
-    fn draw_table(&self, area: Rect, buf: &mut Buffer) {
+    fn draw_table(&self, area: Rect, buf: &mut Buffer, state: &mut App) {
         let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(3)]);
         let rects = vertical.split(area);
 
-        self.render_table(rects[0], buf);
+        self.render_table(rects[0], buf, state);
     }
-    fn render_table(&self, area: Rect, buf: &mut Buffer) {
-        let table = self.clone().table.unwrap();
+    fn render_table(&self, area: Rect, buf: &mut Buffer, state: &mut App) {
+        let table = self.clone().table;
         let header_style = Style::default()
             .fg(table.colors.header_fg)
             .bg(table.colors.header_bg);
@@ -277,12 +273,14 @@ impl App {
             .bg(table.colors.buffer_bg)
             .highlight_spacing(HighlightSpacing::Always);
 
-        t.render(area, buf)
+        ratatui::prelude::StatefulWidget::render(t, area, buf, &mut state.table.state)
     }
 }
 
-impl Widget for &App {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl ratatui::widgets::StatefulWidget for App {
+    type State = App;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let input_size = match self.input_mode {
             InputMode::COMMAND => 3,
             _ => 0
@@ -319,7 +317,8 @@ impl Widget for &App {
             Some(cmd) => {
                 let string_cmd: &str = cmd.into();
                 let title = string_cmd.to_case(Case::Kebab);
-                main_block.title(Title::from(title).alignment(Alignment::Center))
+                main_block.title(title)
+                    .title_alignment(Alignment::Center)
             },
             None => main_block
         };
@@ -327,12 +326,12 @@ impl Widget for &App {
         match &self.command {
             Some(cmd) => {
                 main_block.clone().render(main_area, buf);
-                self.render_command_view(cmd, main_block.inner(main_area), buf)
+                self.render_command_view(cmd, main_block.inner(main_area), buf, state)
             },
             None => {
-                List::new(messages)
-                    .block(main_block)
-                    .render(main_area, buf);
+                let list = List::new(messages)
+                    .block(main_block);
+                Widget::render(list, main_area, buf);
             }
         }
 
