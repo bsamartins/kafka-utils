@@ -3,17 +3,16 @@ use convert_case::{Case, Casing};
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::buffer::Buffer;
-use ratatui::layout::{Constraint, Layout, Rect};
+use ratatui::layout::{Constraint, Flex, Layout, Rect};
 use ratatui::prelude::Widget;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, Padding, Paragraph};
+use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph};
 use ratatui::{DefaultTerminal, Frame};
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, IntoStaticStr};
 use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
-use crate::main;
 
 #[derive(Debug, Default)]
 pub struct App {
@@ -129,16 +128,14 @@ impl Widget for &App {
             InputMode::COMMAND => 3,
             _ => 0
         };
-        let error_size = if self.error.is_some() { 1 } else { 0 };
 
         let vertical = Layout::vertical([
             Constraint::Length(5),
             Constraint::Length(input_size),
             Constraint::Min(1),
-            Constraint::Length(error_size),
         ]);
 
-        let [_, input_area, main_area, error_area] = vertical.areas(area);
+        let [_, input_area, main_area] = vertical.areas(area);
 
         Paragraph::new(self.input.value())
             .style(match self.input_mode {
@@ -181,19 +178,24 @@ impl Widget for &App {
         let error= &self.error;
         if error.is_some() {
             let message = error.clone().unwrap();
-            let block = Block::default()
-                .padding(Padding {
-                    left: 1,
-                    right: 1,
-                    top: 0,
-                    bottom: 0,
-                });
+            let block = Block::bordered().title("error");
+
+            let pop_area = popup_area(area, 60, 20);
+
             Paragraph::new(message)
                 .style(Color::Red)
                 .block(block)
-                .render(error_area, buf);
+                .render(pop_area, buf);
         }
     }
+}
+
+fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
+    let vertical = Layout::vertical([Constraint::Percentage(percent_y)]).flex(Flex::Center);
+    let horizontal = Layout::horizontal([Constraint::Percentage(percent_x)]).flex(Flex::Center);
+    let [area] = vertical.areas(area);
+    let [area] = horizontal.areas(area);
+    area
 }
 
 fn render_command_view(cmd: &Command, block: Block) {

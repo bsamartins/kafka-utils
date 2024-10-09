@@ -1,5 +1,6 @@
 mod tui;
 mod app;
+mod table;
 
 use app::App;
 use color_eyre::eyre::Result;
