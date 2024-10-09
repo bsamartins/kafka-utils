@@ -1,4 +1,5 @@
 use color_eyre::eyre::WrapErr;
+use convert_case::{Case, Casing};
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::buffer::Buffer;
@@ -6,8 +7,10 @@ use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::prelude::Widget;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph};
+use ratatui::widgets::{Block, Borders, List, ListItem, Padding, Paragraph};
 use ratatui::{DefaultTerminal, Frame};
+use strum::IntoEnumIterator;
+use strum_macros::{EnumIter, IntoStaticStr};
 use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
 
@@ -16,6 +19,8 @@ pub struct App {
     input_mode: InputMode,
     input: Input,
     commands: Vec<String>,
+    command: Option<Command>,
+    error: Option<String>,
     exit: bool,
 }
 
@@ -27,6 +32,20 @@ enum InputMode {
 
 impl Default for InputMode {
     fn default() -> Self { InputMode::DEFAULT }
+}
+
+#[derive(Debug, EnumIter, IntoStaticStr)]
+enum Command {
+    ListTopics
+}
+
+impl Command {
+    fn from(s: String) -> Option<Command> {
+        Command::iter().find(|e| {
+            let e_str: &str = e.into();
+            e_str.to_case(Case::Kebab) == s
+        })
+    }
 }
 
 impl App {
@@ -62,8 +81,9 @@ impl App {
                     KeyCode::Esc => {
                         self.input_mode = InputMode::DEFAULT;
                         self.input.reset();
+                        self.error = None;
                     },
-                    KeyCode::Enter => self.submit_message(),
+                    KeyCode::Enter => self.execute_command(),
                     _ => {
                         self.input.handle_event(&Event::Key(key_event));
                     }
@@ -81,10 +101,20 @@ impl App {
         Ok(())
     }
 
-    fn submit_message(&mut self) {
-        self.commands.push(self.input.to_string());
-        self.input.reset();
-        self.input_mode = InputMode::DEFAULT;
+    fn execute_command(&mut self) {
+        let command = Command::from(self.input.to_string());
+        match command {
+            Some(cmd) => {
+                self.commands.push(self.input.to_string());
+                self.command = Some(cmd);
+                self.input.reset();
+                self.input_mode = InputMode::DEFAULT;
+                self.error = None;
+            }
+            _ => {
+                self.error = Some(format!("Unknown command '{}'", self.input));
+            }
+        }
     }
 
     fn exit(&mut self) {
@@ -98,13 +128,16 @@ impl Widget for &App {
             InputMode::COMMAND => 3,
             _ => 0
         };
+        let error_size = if self.error.is_some() { 1 } else { 0 };
+
         let vertical = Layout::vertical([
             Constraint::Length(5),
             Constraint::Length(input_size),
             Constraint::Min(1),
+            Constraint::Length(error_size),
         ]);
 
-        let [_, input_area, main_area] = vertical.areas(area);
+        let [_, input_area, main_area, error_area] = vertical.areas(area);
 
         Paragraph::new(self.input.value())
             .style(match self.input_mode {
@@ -123,8 +156,34 @@ impl Widget for &App {
                 ListItem::new(content)
             })
             .collect();
+
+        let mut main_block = Block::bordered();
+        main_block = match &self.command {
+            Some(cmd) => {
+                let enum_str: &str = cmd.into();
+                main_block.title(enum_str)
+            },
+            None => main_block
+        };
+
         List::new(messages)
-            .block(Block::bordered().title("Main"))
+            .block(main_block)
             .render(main_area, buf);
+
+        let error= &self.error;
+        if error.is_some() {
+            let message = error.clone().unwrap();
+            let block = Block::default()
+                .padding(Padding {
+                    left: 1,
+                    right: 1,
+                    top: 0,
+                    bottom: 0,
+                });
+            Paragraph::new(message)
+                .style(Color::Red)
+                .block(block)
+                .render(error_area, buf);
+        }
     }
 }

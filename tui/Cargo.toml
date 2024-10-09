@@ -9,3 +9,6 @@ ratatui = "0.28.1"
 common = { path = "../common" }
 color-eyre = "0.6.3"
 tui-input = "0.10.1"
+strum = "0.26.3"
+strum_macros = "0.26.4"
+convert_case = "0.6.0"
