@@ -215,21 +215,21 @@ impl App {
         self.exit = true;
     }
 
-    fn render_command_view(&self, cmd: &Command, block: Block, area: Rect, buf: &mut Buffer) {
+    fn render_command_view(&self, cmd: &Command, area: Rect, buf: &mut Buffer) {
         match cmd {
             Command::ListTopics => {
-                self.draw_table(block, area, buf);
+                self.draw_table(area, buf);
             }
         }
     }
 
-    fn draw_table(&self, block: Block, area: Rect, buf: &mut Buffer) {
+    fn draw_table(&self, area: Rect, buf: &mut Buffer) {
         let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(3)]);
         let rects = vertical.split(area);
 
-        self.render_table(block, rects[0], buf);
+        self.render_table(rects[0], buf);
     }
-    fn render_table(&self, block: Block, area: Rect, buf: &mut Buffer) {
+    fn render_table(&self, area: Rect, buf: &mut Buffer) {
         let table = self.clone().table.unwrap();
         let header_style = Style::default()
             .fg(table.colors.header_fg)
