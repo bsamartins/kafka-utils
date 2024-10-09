@@ -1,5 +1,5 @@
 use crate::table::LocalTable;
-use crate::test_data::{generate_fake_names, Data, constraint_len_calculator};
+use crate::test_data::{constraint_len_calculator, generate_fake_names, Data};
 use color_eyre::eyre::WrapErr;
 use convert_case::{Case, Casing};
 use crossterm::event;
@@ -9,7 +9,7 @@ use ratatui::layout::{Constraint, Flex, Layout, Margin, Rect};
 use ratatui::prelude::Widget;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::{Block, BorderType, Borders, Cell, HighlightSpacing, List, ListItem, Paragraph, Row, Scrollbar, ScrollbarOrientation, Table};
+use ratatui::widgets::{Block, Borders, Cell, HighlightSpacing, List, ListItem, Paragraph, Row, Scrollbar, ScrollbarOrientation, Table};
 use ratatui::{DefaultTerminal, Frame};
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, IntoStaticStr};
@@ -180,11 +180,10 @@ impl App {
         let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(3)]);
         let rects = vertical.split(area);
 
-        self.render_table(block, rects[0], buf);
-        self.clone().render_scrollbar(rects[0], buf);
-        self.clone().render_footer(rects[1], buf);
+        self.render_table(block.clone(), rects[0], buf);
+        self.clone().render_scrollbar(block.clone(), rects[0], buf);
     }
-    fn render_scrollbar(self, area: Rect, buf: &mut Buffer) {
+    fn render_scrollbar(self, block: Block, area: Rect, buf: &mut Buffer) {
         let scrollbar = Scrollbar::default()
             .orientation(ScrollbarOrientation::VerticalRight)
             .begin_symbol(None)
@@ -199,22 +198,6 @@ impl App {
             buf,
             &mut self.table.unwrap().scroll_state,
         );
-    }
-
-    fn render_footer(&self, area: Rect, buf: &mut Buffer) {
-        let info_footer = Paragraph::new(Line::from("footer"))
-            .style(
-                Style::new()
-                    .fg(self.clone().table.unwrap().colors.row_fg)
-                    .bg(self.clone().table.unwrap().colors.buffer_bg),
-            )
-            .centered()
-            .block(
-                Block::bordered()
-                    .border_type(BorderType::Double)
-                    .border_style(Style::new().fg(self.clone().table.unwrap().colors.footer_border_color)),
-            );
-        info_footer.render(area, buf);
     }
 
     fn render_table(&self, block: Block, area: Rect, buf: &mut Buffer) {
