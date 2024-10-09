@@ -1,6 +1,6 @@
 use color_eyre::eyre::WrapErr;
 use crossterm::event;
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::prelude::Widget;
@@ -72,6 +72,7 @@ impl App {
             InputMode::DEFAULT => {
                 match key_event.code {
                     KeyCode::Char('q') => self.exit(),
+                    KeyCode::Char('c') if key_event.modifiers == KeyModifiers::CONTROL => self.exit(),
                     KeyCode::Char(':') => self.input_mode = InputMode::COMMAND,
                     _ => {}
                 }
@@ -93,12 +94,17 @@ impl App {
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let input_size = match self.input_mode {
+            InputMode::COMMAND => 3,
+            _ => 0
+        };
         let vertical = Layout::vertical([
-            Constraint::Length(3),
+            Constraint::Length(5),
+            Constraint::Length(input_size),
             Constraint::Min(1),
         ]);
 
-        let [input_area, main_area] = vertical.areas(area);
+        let [_, input_area, main_area] = vertical.areas(area);
 
         Paragraph::new(self.input.value())
             .style(match self.input_mode {
