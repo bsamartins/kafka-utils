@@ -1,30 +1,41 @@
+use crate::table::LocalTable;
+use crate::test_data::Data;
 use color_eyre::eyre::WrapErr;
+use color_eyre::owo_colors::OwoColorize;
 use convert_case::{Case, Casing};
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Flex, Layout, Rect};
 use ratatui::prelude::Widget;
-use ratatui::style::{Color, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph};
+use ratatui::style::{Color, Modifier, Style, Stylize};
+use ratatui::text::{Line, Span, Text};
+use ratatui::widgets::{Block, Borders, Cell, HighlightSpacing, List, ListItem, Paragraph, Row, Table};
 use ratatui::{DefaultTerminal, Frame};
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, IntoStaticStr};
 use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
 
-#[derive(Debug, Default)]
+#[derive(Default, Clone)]
 pub struct App {
     input_mode: InputMode,
     input: Input,
+
     commands: Vec<String>,
     command: Option<Command>,
+
     error: Option<String>,
+
+    table: Option<LocalTable>,
+
+    data: Vec<Data>,
+    longest_item_lens: (u16, u16, u16),
+
     exit: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum InputMode {
     DEFAULT,
     COMMAND,
@@ -34,7 +45,7 @@ impl Default for InputMode {
     fn default() -> Self { InputMode::DEFAULT }
 }
 
-#[derive(Debug, EnumIter, IntoStaticStr)]
+#[derive(Debug, Clone, EnumIter, IntoStaticStr)]
 enum Command {
     ListTopics
 }
@@ -121,6 +132,7 @@ impl App {
                 self.command = Some(cmd);
                 self.input.reset();
                 self.input_mode = InputMode::DEFAULT;
+                self.table = Some(LocalTable::new());
                 self.clear_error();
             }
             _ => {
@@ -140,6 +152,96 @@ impl App {
 
     fn exit(&mut self) {
         self.exit = true;
+    }
+
+    // fn render_scrollbar(&mut self, frame: &mut Frame, area: Rect) {
+    //     frame.render_stateful_widget(
+    //         Scrollbar::default()
+    //             .orientation(ScrollbarOrientation::VerticalRight)
+    //             .begin_symbol(None)
+    //             .end_symbol(None),
+    //         area.inner(Margin {
+    //             vertical: 1,
+    //             horizontal: 1,
+    //         }),
+    //         &mut self.table.scroll_state,
+    //     );
+    // }
+    //
+    // fn render_footer(&self, frame: &mut Frame, area: Rect) {
+    //     let info_footer = Paragraph::new(Line::from("footer"))
+    //         .style(
+    //             Style::new()
+    //                 .fg(self.colors.row_fg)
+    //                 .bg(self.colors.buffer_bg),
+    //         )
+    //         .centered()
+    //         .block(
+    //             Block::bordered()
+    //                 .border_type(BorderType::Double)
+    //                 .border_style(Style::new().fg(self.colors.footer_border_color)),
+    //         );
+    //     frame.render_widget(info_footer, area);
+    // }
+
+    fn render_command_view(&self, cmd: &Command, block: Block, area: Rect, buf: &mut Buffer) {
+        match cmd {
+            Command::ListTopics => {
+                self.render_table(block, area, buf);
+            }
+        }
+    }
+
+    fn render_table(&self, block: Block, area: Rect, buf: &mut Buffer) {
+        let table = self.clone().table.unwrap();
+        let header_style = Style::default()
+            .fg(table.colors.header_fg)
+            .bg(table.colors.header_bg);
+        let selected_style = Style::default()
+            .add_modifier(Modifier::REVERSED)
+            .fg(table.colors.selected_style_fg);
+
+        let header = ["Name", "Address", "Email"]
+            .into_iter()
+            .map(Cell::from)
+            .collect::<Row>()
+            .style(header_style)
+            .height(1);
+        let rows = self.data.iter().enumerate().map(|(i, data)| {
+            let color = match i % 2 {
+                0 => table.colors.normal_row_color,
+                _ => table.colors.alt_row_color,
+            };
+            let item = data.ref_array();
+            item.into_iter()
+                .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
+                .collect::<Row>()
+                .style(Style::new().fg(table.colors.row_fg).bg(color))
+                .height(4)
+        });
+        let bar = " █ ";
+        let t = Table::new(
+            rows,
+            [
+                // + 1 is for padding.
+                Constraint::Length(self.longest_item_lens.0 + 1),
+                Constraint::Min(self.longest_item_lens.1 + 1),
+                Constraint::Min(self.longest_item_lens.2),
+            ],
+        )
+            .header(header)
+            .highlight_style(selected_style)
+            .highlight_symbol(Text::from(vec![
+                "".into(),
+                bar.into(),
+                bar.into(),
+                "".into(),
+            ]))
+            .bg(table.colors.buffer_bg)
+            .highlight_spacing(HighlightSpacing::Always)
+            .block(block);
+
+        t.render(area, buf)
     }
 }
 
@@ -187,7 +289,8 @@ impl Widget for &App {
 
         match &self.command {
             Some(cmd) => {
-                render_command_view(cmd, main_block, main_area, buf)
+                let table = &self.table;
+                self.render_command_view(cmd, main_block, main_area, buf)
             },
             None => {
                 List::new(messages)
@@ -216,10 +319,4 @@ fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
     let [area] = vertical.areas(area);
     let [area] = horizontal.areas(area);
     area
-}
-
-fn render_command_view(cmd: &Command, block: Block, area: Rect, buf: &mut Buffer) {
-    Paragraph::new("TODO()")
-        .block(block)
-        .render(area, buf)
 }
