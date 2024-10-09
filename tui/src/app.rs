@@ -13,6 +13,7 @@ use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, IntoStaticStr};
 use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
+use crate::main;
 
 #[derive(Debug, Default)]
 pub struct App {
@@ -166,9 +167,16 @@ impl Widget for &App {
             None => main_block
         };
 
-        List::new(messages)
-            .block(main_block)
-            .render(main_area, buf);
+        match &self.command {
+            Some(cmd) => {
+                render_command_view(cmd, main_block)
+            },
+            None => {
+                List::new(messages)
+                    .block(main_block)
+                    .render(main_area, buf);
+            }
+        }
 
         let error= &self.error;
         if error.is_some() {
@@ -186,4 +194,8 @@ impl Widget for &App {
                 .render(error_area, buf);
         }
     }
+}
+
+fn render_command_view(cmd: &Command, block: Block) {
+    todo!()
 }
