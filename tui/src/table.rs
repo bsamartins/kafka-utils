@@ -26,7 +26,6 @@ pub struct TableColors {
     pub(crate) selected_style_fg: Color,
     pub(crate) normal_row_color: Color,
     pub(crate) alt_row_color: Color,
-    pub(crate) footer_border_color: Color,
 }
 
 impl TableColors {
@@ -39,7 +38,6 @@ impl TableColors {
             selected_style_fg: color.c400,
             normal_row_color: SLATE.c950,
             alt_row_color: SLATE.c900,
-            footer_border_color: color.c400,
         }
     }
 }
