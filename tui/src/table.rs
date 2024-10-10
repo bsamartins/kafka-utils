@@ -1,15 +1,15 @@
 use ratatui::style::palette::tailwind::{Palette, SLATE};
 use ratatui::style::Color;
-use ratatui::widgets::TableState;
+use ratatui::widgets::{Cell, TableState};
 
 #[derive(Debug, Clone)]
-pub struct LocalTable {
+pub struct LocalTable<'a> {
     pub(crate) colors: TableColors,
     pub(crate) state: TableState,
-    pub(crate) definition: TableDefinition,
+    pub(crate) definition: TableDefinition<'a>,
 }
 
-impl LocalTable {
+impl<'a> LocalTable<'a> {
     pub(crate) fn new() -> Self {
         Self {
             colors: TableColors::new(&SLATE),
@@ -45,14 +45,14 @@ impl TableColors {
 }
 
 #[derive(Debug, Clone)]
-pub struct TableDefinition {
-    pub(crate) headers: Vec<String>,
+pub struct TableDefinition<'a> {
+    pub(crate) headers: Vec<Cell<'a>>,
 }
 
-impl TableDefinition {
-    pub(crate) fn new(headers: Vec<&str>) -> Self {
+impl<'a> TableDefinition<'a> {
+    pub(crate) fn new(headers: Vec<Cell<'a>>) -> Self {
         Self {
-            headers: headers.iter().map(|s| s.to_string()).collect(),
+            headers,
         }
     }
     fn empty() -> Self {

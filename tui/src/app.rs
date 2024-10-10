@@ -14,7 +14,7 @@ use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
 
 #[derive(Clone)]
-pub struct App {
+pub struct App<'a> {
     input_mode: InputMode,
     input: Input,
 
@@ -23,7 +23,7 @@ pub struct App {
 
     error: Option<String>,
 
-    table: LocalTable,
+    table: LocalTable<'a>,
 
     data: Vec<Data>,
     longest_item_lens: (u16, u16, u16),
@@ -55,7 +55,7 @@ impl Command {
     }
 }
 
-impl App {
+impl<'a> App<'a> {
 
     pub fn new() -> Self {
         let data = generate_fake_names();
@@ -252,12 +252,18 @@ impl App {
     }
 }
 
-fn create_list_topics_table_definition() -> TableDefinition {
-    TableDefinition::new(vec!["Name", "Address", "Email"])
+fn create_list_topics_table_definition<'a>() -> TableDefinition<'a> {
+    TableDefinition::new(
+        vec![
+            Cell::from("Name"),
+            Cell::from("Address"),
+            Cell::from("Email")
+        ]
+    )
 }
 
-impl ratatui::widgets::StatefulWidget for App {
-    type State = App;
+impl<'a> ratatui::widgets::StatefulWidget for App<'a> {
+    type State = App<'a>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let input_size = match self.input_mode {
