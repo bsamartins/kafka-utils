@@ -21,7 +21,7 @@ pub fn create_list_topics_table_definition<'a>() -> TableDefinition<'a> {
             Cell::from(Text::from("Message Count").alignment(Alignment::Right)),
             Cell::from(Text::from("Size").alignment(Alignment::Right)),
         ]
-    )
+    ).selectable(true)
 }
 
 pub fn table_from<'a>(data: Vec<ListTopicEntry>) -> TableData<'a> {

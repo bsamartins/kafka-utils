@@ -7,6 +7,7 @@ use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::layout::Flex;
 use ratatui::prelude::{Alignment, Buffer, Color, Constraint, Layout, Modifier, Rect, Style, Stylize, Widget};
+use ratatui::style::Styled;
 use ratatui::widgets::{Block, Borders, Cell, Clear, HighlightSpacing, Padding, Paragraph, Row, Table};
 use ratatui::{DefaultTerminal, Frame};
 use strum::IntoEnumIterator;
@@ -125,16 +126,17 @@ impl<'a> App<'a> {
                             KeyCode::Char('q') => self.exit(),
                             KeyCode::Char(':') => self.input_mode = InputMode::COMMAND,
                             _ => {
-                                match self.command {
-                                    Some(_) => {
+                                match &self.command {
+                                    Some(cmd) => {
                                         match key_event.code {
                                             KeyCode::Up => {
                                                 self.table.state.select_previous();
-                                                self.set_error_message(format!("Up - {}", self.table.state.selected().map(|v| v.to_string()).unwrap_or("None".to_string())));
                                             }
                                             KeyCode::Down => {
                                                 self.table.state.select_next();
-                                                self.set_error_message(format!("Down - {}", self.table.state.selected().map(|v| v.to_string()).unwrap_or("None".to_string())));
+                                            }
+                                            KeyCode::Char(' ') => {
+                                                self.table.toggle_selected();
                                             }
                                             _ => {}
                                         }
@@ -208,15 +210,28 @@ impl<'a> App<'a> {
             .add_modifier(Modifier::REVERSED);
 
         let table_definition = state.clone().table.definition;
+
         let header = table_definition
-            .headers
+            .header
             .into_iter()
             .map(Cell::from)
             .collect::<Row>()
             .style(header_style)
             .height(1);
 
-        let t = Table::new(table_data.rows, table_data.widths)
+        let rows: Vec<Row> = if table_definition.selectable {
+            table_data.rows.iter().enumerate().map(|(i, row)| {
+                if state.table.selected.contains(&i) {
+                    let style = Style::from(row.style())
+                        .add_modifier(Modifier::BOLD);
+                    row.clone().set_style(style)
+                } else {
+                    row.clone()
+                }
+            }).collect::<Vec<_>>()
+        } else { table_data.rows };
+
+        let t = Table::new(rows, table_data.widths)
             .header(header)
             .highlight_style(selected_style)
             .highlight_spacing(HighlightSpacing::Always);
