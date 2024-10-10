@@ -1,5 +1,5 @@
-use crate::table::{LocalTable, TableDefinition};
-use crate::test_data::{constraint_len_calculator, generate_fake_names, Data};
+use crate::table::{constraint_len_calculator, LocalTable, TableData, TableDefinition};
+use crate::test_data::{generate_fake_names, Data};
 use color_eyre::eyre::WrapErr;
 use convert_case::{Case, Casing};
 use crossterm::event;
@@ -8,6 +8,7 @@ use ratatui::layout::Flex;
 use ratatui::prelude::{Alignment, Buffer, Color, Constraint, Layout, Line, Modifier, Rect, Span, Style, Stylize, Text, Widget};
 use ratatui::widgets::{Block, Borders, Cell, Clear, HighlightSpacing, List, ListItem, Paragraph, Row, Table};
 use ratatui::{DefaultTerminal, Frame};
+use std::cmp::max;
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, IntoStaticStr};
 use tui_input::backend::crossterm::EventHandler;
@@ -25,8 +26,7 @@ pub struct App<'a> {
 
     table: LocalTable<'a>,
 
-    data: Vec<Data>,
-    longest_item_lens: (u16, u16, u16),
+    data: TableData<'a>,
 
     exit: bool,
 }
@@ -58,7 +58,7 @@ impl Command {
 impl<'a> App<'a> {
 
     pub fn new() -> Self {
-        let data = generate_fake_names();
+        let data = table_from(generate_fake_names());
         Self {
             input_mode: Default::default(),
             input: Default::default(),
@@ -66,8 +66,7 @@ impl<'a> App<'a> {
             command: None,
             error: None,
             table: LocalTable::new(),
-            data: data.clone(),
-            longest_item_lens: constraint_len_calculator(&data),
+            data,
             exit: false,
         }
     }
@@ -203,6 +202,7 @@ impl<'a> App<'a> {
     }
     fn render_table(&self, area: Rect, buf: &mut Buffer, state: &mut App) {
         let table = self.clone().table;
+        let table_data = state.clone().data;
         let header_style = Style::default()
             .fg(table.colors.header_fg)
             .bg(table.colors.header_bg);
@@ -218,48 +218,25 @@ impl<'a> App<'a> {
             .collect::<Row>()
             .style(header_style)
             .height(1);
-        let rows = self.data.iter().enumerate().map(|(i, data)| {
+        let rows = table_data.rows.iter().enumerate().map(|(i, data)| {
             let color = match i % 2 {
                 0 => table.colors.normal_row_color,
                 _ => table.colors.alt_row_color,
             };
-            let item = data.ref_array();
-            item.into_iter()
-                .map(|content| Cell::from(Text::from(format!("{content}"))))
-                .collect::<Row>()
+            data.clone()
                 .style(Style::new().fg(table.colors.row_fg).bg(color))
                 .height(1)
         });
         let bar = " █ ";
-        let t = Table::new(
-            rows,
-            [
-                // + 1 is for padding.
-                Constraint::Length(self.longest_item_lens.0 + 1),
-                Constraint::Min(self.longest_item_lens.1 + 1),
-                Constraint::Min(self.longest_item_lens.2),
-            ],
-        )
+        let t = Table::new(rows, table_data.widths)
             .header(header)
             .highlight_style(selected_style)
-            .highlight_symbol(Text::from(vec![
-                bar.into(),
-            ]))
+            .highlight_symbol(Text::from(vec![bar.into()]))
             .bg(table.colors.buffer_bg)
             .highlight_spacing(HighlightSpacing::Always);
 
         ratatui::prelude::StatefulWidget::render(t, area, buf, &mut state.table.state)
     }
-}
-
-fn create_list_topics_table_definition<'a>() -> TableDefinition<'a> {
-    TableDefinition::new(
-        vec![
-            Cell::from("Name"),
-            Cell::from("Address"),
-            Cell::from("Email")
-        ]
-    )
 }
 
 impl<'a> ratatui::widgets::StatefulWidget for App<'a> {
@@ -344,4 +321,42 @@ fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
     let [area] = vertical.areas(area);
     let [area] = horizontal.areas(area);
     area
+}
+
+fn create_list_topics_table_definition<'a>() -> TableDefinition<'a> {
+    TableDefinition::new(
+        vec![
+            Cell::from("Name"),
+            Cell::from("Address"),
+            Cell::from("Email")
+        ]
+    )
+}
+
+fn table_from<'a>(data: Vec<Data>) -> TableData<'a> {
+    let mut longest_name = 0;
+    let mut longest_address = 0;
+    let mut longest_email = 0;
+
+    TableData::new(
+        data.iter().map(|r| {
+            longest_name = max(0, constraint_len_calculator(&r.name()));
+            longest_address = max(0, constraint_len_calculator(&r.address()));
+            longest_email = max(0, constraint_len_calculator(&r.email()));
+            Row::new(
+                vec![
+                    Cell::from(r.name.clone()),
+                    Cell::from(r.address.clone()),
+                    Cell::from(r.email.clone()),
+                ]
+            )
+        }).collect(),
+        vec![
+            // + 1 is for padding.
+            Constraint::Length(longest_name + 1),
+            Constraint::Min(longest_address + 1),
+            Constraint::Min(longest_email),
+
+        ]
+    )
 }

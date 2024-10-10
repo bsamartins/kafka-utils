@@ -1,6 +1,8 @@
+use ratatui::prelude::Constraint;
 use ratatui::style::palette::tailwind::{Palette, SLATE};
 use ratatui::style::Color;
-use ratatui::widgets::{Cell, TableState};
+use ratatui::widgets::{Cell, Row, TableState};
+use unicode_width::UnicodeWidthStr;
 
 #[derive(Debug, Clone)]
 pub struct LocalTable<'a> {
@@ -60,4 +62,23 @@ impl<'a> TableDefinition<'a> {
             headers: vec![]
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct TableData<'a> {
+    pub rows: Vec<Row<'a>>,
+    pub widths: Vec<Constraint>,
+}
+
+impl<'a> TableData<'a> {
+    pub(crate) fn new(rows: Vec<Row<'a>>, widths: Vec<Constraint>) -> Self {
+        Self {
+            rows,
+            widths,
+        }
+    }
+}
+
+pub(crate) fn constraint_len_calculator(item: &str) -> u16 {
+    item.width() as u16
 }
