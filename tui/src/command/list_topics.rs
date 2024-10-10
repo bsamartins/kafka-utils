@@ -1,68 +1,59 @@
 use crate::table::{constraint_len_calculator, TableData, TableDefinition};
-use crate::test_data::generate_fake_names;
+use common::kafka;
+use common::kafka::client::Config;
+use common::kafka::types::ListTopicEntry;
 use ratatui::layout::Constraint;
 use ratatui::widgets::{Cell, Row};
 use std::cmp::max;
 
-pub(crate) fn list_topics<'a>() -> TableData<'a> {
-    table_from(generate_fake_names())
-}
-
-#[derive(Clone)]
-pub struct Data {
-    pub name: String,
-    pub address: String,
-    pub email: String,
-}
-
-impl Data {
-    pub(crate) fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub(crate) fn address(&self) -> &str {
-        &self.address
-    }
-
-    pub(crate) fn email(&self) -> &str {
-        &self.email
-    }
+pub(crate) fn list_topics<'a>(config: &Config) -> TableData<'a> {
+    let topics = kafka::topic::list_topics(config.clone());
+    table_from(topics)
 }
 
 pub fn create_list_topics_table_definition<'a>() -> TableDefinition<'a> {
     TableDefinition::new(
         vec![
             Cell::from("Name"),
-            Cell::from("Address"),
-            Cell::from("Email")
+            Cell::from("Partitions"),
+            Cell::from("Replication Factor"),
+            Cell::from("Message Count"),
+            Cell::from("Size"),
         ]
     )
 }
 
-pub fn table_from<'a>(data: Vec<Data>) -> TableData<'a> {
+pub fn table_from<'a>(data: Vec<ListTopicEntry>) -> TableData<'a> {
     let mut longest_name = 0;
-    let mut longest_address = 0;
-    let mut longest_email = 0;
+    let mut longest_partitions = 0;
+    let mut longest_replication_factor = 0;
+    let mut longest_message_count = 0;
+    let mut longest_size = 0;
 
     TableData::new(
         data.iter().map(|r| {
-            longest_name = max(0, constraint_len_calculator(r.name()));
-            longest_address = max(0, constraint_len_calculator(r.address()));
-            longest_email = max(0, constraint_len_calculator(r.email()));
+            longest_name = max(0, constraint_len_calculator(r.name.as_str()));
+            longest_partitions = max(0, constraint_len_calculator(r.partitions.to_string().as_str()));
+            longest_replication_factor = max(0, constraint_len_calculator(r.replication_factor.to_string().as_str()));
+            longest_message_count = max(0, constraint_len_calculator(r.message_count.to_string().as_str()));
+            longest_size = max(0, constraint_len_calculator(r.size.to_string().as_str()));
             Row::new(
                 vec![
-                    Cell::from(r.name.clone()),
-                    Cell::from(r.address.clone()),
-                    Cell::from(r.email.clone()),
+                    Cell::from(r.clone().name),
+                    Cell::from(r.partitions.to_string()),
+                    Cell::from(r.replication_factor.to_string()),
+                    Cell::from(r.message_count.to_string()),
+                    Cell::from(r.size.to_string()),
                 ]
             )
         }).collect(),
         vec![
             // + 1 is for padding.
             Constraint::Length(longest_name + 1),
-            Constraint::Min(longest_address + 1),
-            Constraint::Min(longest_email),
-
+            Constraint::Min(longest_partitions + 1),
+            Constraint::Min(longest_replication_factor + 1),
+            Constraint::Min(longest_message_count + 1),
+            Constraint::Min(longest_size),
         ]
     )
 }

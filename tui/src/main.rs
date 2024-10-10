@@ -1,7 +1,6 @@
 mod tui;
 mod app;
 mod table;
-mod test_data;
 mod command;
 mod cli;
 

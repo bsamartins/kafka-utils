@@ -166,7 +166,7 @@ impl<'a> App<'a> {
                 match cmd {
                     Command::ListTopics => {
                         self.table.definition = command::list_topics::create_list_topics_table_definition();
-                        self.data = command::list_topics::list_topics();
+                        self.data = command::list_topics::list_topics(&self.config);
                     }
                 }
             }
