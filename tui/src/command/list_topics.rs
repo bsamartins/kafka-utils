@@ -46,9 +46,9 @@ pub fn table_from<'a>(data: Vec<Data>) -> TableData<'a> {
 
     TableData::new(
         data.iter().map(|r| {
-            longest_name = max(0, constraint_len_calculator(&r.name()));
-            longest_address = max(0, constraint_len_calculator(&r.address()));
-            longest_email = max(0, constraint_len_calculator(&r.email()));
+            longest_name = max(0, constraint_len_calculator(r.name()));
+            longest_address = max(0, constraint_len_calculator(r.address()));
+            longest_email = max(0, constraint_len_calculator(r.email()));
             Row::new(
                 vec![
                     Cell::from(r.name.clone()),
