@@ -1,4 +1,4 @@
-use crate::table::LocalTable;
+use crate::table::{LocalTable, TableDefinition};
 use crate::test_data::{constraint_len_calculator, generate_fake_names, Data};
 use color_eyre::eyre::WrapErr;
 use convert_case::{Case, Casing};
@@ -161,8 +161,12 @@ impl App {
                 self.command = Some(cmd);
                 self.input.reset();
                 self.input_mode = InputMode::DEFAULT;
-                // self.table = Some(LocalTable::new());
                 self.clear_error();
+                match cmd {
+                    Command::ListTopics => {
+                        self.table.definition = create_list_topics_table_definition()
+                    }
+                }
             }
             _ => {
                 self.set_error_message(format!("Unknown command '{}'", self.input));
@@ -206,7 +210,9 @@ impl App {
             .add_modifier(Modifier::REVERSED)
             .fg(table.colors.selected_style_fg);
 
-        let header = ["Name", "Address", "Email"]
+        let table_definition = state.clone().table.definition;
+        let header = table_definition
+            .headers
             .into_iter()
             .map(Cell::from)
             .collect::<Row>()
@@ -244,6 +250,10 @@ impl App {
 
         ratatui::prelude::StatefulWidget::render(t, area, buf, &mut state.table.state)
     }
+}
+
+fn create_list_topics_table_definition() -> TableDefinition {
+    TableDefinition::new(vec!["Name", "Address", "Email"])
 }
 
 impl ratatui::widgets::StatefulWidget for App {

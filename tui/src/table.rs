@@ -6,6 +6,7 @@ use ratatui::widgets::TableState;
 pub struct LocalTable {
     pub(crate) colors: TableColors,
     pub(crate) state: TableState,
+    pub(crate) definition: TableDefinition,
 }
 
 impl LocalTable {
@@ -13,6 +14,7 @@ impl LocalTable {
         Self {
             colors: TableColors::new(&SLATE),
             state: TableState::default(),
+            definition: TableDefinition::empty(),
         }
     }
 }
@@ -38,6 +40,24 @@ impl TableColors {
             selected_style_fg: color.c400,
             normal_row_color: SLATE.c950,
             alt_row_color: SLATE.c900,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TableDefinition {
+    pub(crate) headers: Vec<String>,
+}
+
+impl TableDefinition {
+    pub(crate) fn new(headers: Vec<&str>) -> Self {
+        Self {
+            headers: headers.iter().map(|s| s.to_string()).collect(),
+        }
+    }
+    fn empty() -> Self {
+        Self {
+            headers: vec![]
         }
     }
 }
