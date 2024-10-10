@@ -203,11 +203,11 @@ impl<'a> App<'a> {
         let table = self.clone().table;
         let table_data = state.clone().data;
         let header_style = Style::default()
-            .fg(table.colors.header_fg)
-            .bg(table.colors.header_bg);
+            .fg(table.colors.header_fg);
         let selected_style = Style::default()
             .add_modifier(Modifier::REVERSED)
-            .fg(table.colors.selected_style_fg);
+            // .fg(table.colors.selected_style_fg)
+            ;
 
         let table_definition = state.clone().table.definition;
         let header = table_definition
@@ -218,12 +218,8 @@ impl<'a> App<'a> {
             .style(header_style)
             .height(1);
         let rows = table_data.rows.iter().enumerate().map(|(i, data)| {
-            let color = match i % 2 {
-                0 => table.colors.normal_row_color,
-                _ => table.colors.alt_row_color,
-            };
             data.clone()
-                .style(Style::new().fg(table.colors.row_fg).bg(color))
+                // .style(Style::new().fg(table.colors.row_fg).bg(color))
                 .height(1)
         });
         let t = Table::new(rows, table_data.widths)
@@ -261,6 +257,7 @@ impl<'a> ratatui::widgets::StatefulWidget for App<'a> {
             .render(input_area, buf);
 
         let mut main_block = Block::bordered()
+            .style(Style::new().fg(self.table.colors.border))
             .padding(Padding {
                 left: 1,
                 right: 1,
@@ -283,7 +280,9 @@ impl<'a> ratatui::widgets::StatefulWidget for App<'a> {
                     .render(main_area, buf);
                 self.render_command_view(cmd, main_block.inner(main_area), buf, state)
             },
-            None => {}
+            None => {
+                main_block.render(main_area, buf);
+            }
         }
 
         if self.has_error() {
