@@ -131,11 +131,11 @@ impl App {
                                     Some(_) => {
                                         match key_event.code {
                                             KeyCode::Up => {
-                                                self.previous();
+                                                self.table.state.select_previous();
                                                 self.set_error_message(format!("Up - {}", self.table.state.selected().map(|v| v.to_string()).unwrap_or("None".to_string())));
                                             }
                                             KeyCode::Down => {
-                                                self.next();
+                                                self.table.state.select_next();
                                                 self.set_error_message(format!("Down - {}", self.table.state.selected().map(|v| v.to_string()).unwrap_or("None".to_string())));
                                             }
                                             _ => {}
@@ -179,34 +179,6 @@ impl App {
 
     fn has_error(&self) -> bool { self.error.is_some() }
 
-    pub fn next(&mut self) {
-        let i = match self.table.state.selected() {
-            Some(i) => {
-                if i >= self.data.len() - 1 {
-                    0
-                } else {
-                    i + 1
-                }
-            }
-            None => 0,
-        };
-        self.table.state.select(Some(i));
-    }
-
-    pub fn previous(&mut self) {
-        let i = match self.table.state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    self.data.len() - 1
-                } else {
-                    i - 1
-                }
-            }
-            None => 0,
-        };
-        self.table.state.select(Some(i));
-    }
-
     fn exit(&mut self) {
         self.exit = true;
     }
@@ -247,10 +219,10 @@ impl App {
             };
             let item = data.ref_array();
             item.into_iter()
-                .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
+                .map(|content| Cell::from(Text::from(format!("{content}"))))
                 .collect::<Row>()
                 .style(Style::new().fg(table.colors.row_fg).bg(color))
-                .height(2)
+                .height(1)
         });
         let bar = " █ ";
         let t = Table::new(
@@ -265,10 +237,7 @@ impl App {
             .header(header)
             .highlight_style(selected_style)
             .highlight_symbol(Text::from(vec![
-                "".into(),
                 bar.into(),
-                bar.into(),
-                "".into(),
             ]))
             .bg(table.colors.buffer_bg)
             .highlight_spacing(HighlightSpacing::Always);
