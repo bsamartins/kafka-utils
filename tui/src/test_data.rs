@@ -1,25 +1,5 @@
+use crate::command::list_topics::Data;
 use itertools::Itertools;
-
-#[derive(Clone)]
-pub struct Data {
-    pub name: String,
-    pub address: String,
-    pub email: String,
-}
-
-impl Data {
-    pub(crate) fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub(crate) fn address(&self) -> &str {
-        &self.address
-    }
-
-    pub(crate) fn email(&self) -> &str {
-        &self.email
-    }
-}
 
 pub fn generate_fake_names() -> Vec<Data> {
     use fakeit::{address, contact, name};

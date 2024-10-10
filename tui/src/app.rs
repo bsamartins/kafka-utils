@@ -1,5 +1,4 @@
-use crate::table::{constraint_len_calculator, LocalTable, TableData, TableDefinition};
-use crate::test_data::{generate_fake_names, Data};
+use crate::table::{LocalTable, TableData};
 use color_eyre::eyre::WrapErr;
 use convert_case::{Case, Casing};
 use crossterm::event;
@@ -8,11 +7,11 @@ use ratatui::layout::Flex;
 use ratatui::prelude::{Alignment, Buffer, Color, Constraint, Layout, Line, Modifier, Rect, Span, Style, Stylize, Text, Widget};
 use ratatui::widgets::{Block, Borders, Cell, Clear, HighlightSpacing, List, ListItem, Paragraph, Row, Table};
 use ratatui::{DefaultTerminal, Frame};
-use std::cmp::max;
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, IntoStaticStr};
 use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
+use crate::command;
 
 #[derive(Clone)]
 pub struct App<'a> {
@@ -58,7 +57,6 @@ impl Command {
 impl<'a> App<'a> {
 
     pub fn new() -> Self {
-        let data = table_from(generate_fake_names());
         Self {
             input_mode: Default::default(),
             input: Default::default(),
@@ -66,7 +64,7 @@ impl<'a> App<'a> {
             command: None,
             error: None,
             table: LocalTable::new(),
-            data,
+            data: TableData::empty(),
             exit: false,
         }
     }
@@ -163,7 +161,8 @@ impl<'a> App<'a> {
                 self.clear_error();
                 match cmd {
                     Command::ListTopics => {
-                        self.table.definition = create_list_topics_table_definition()
+                        self.table.definition = command::list_topics::create_list_topics_table_definition();
+                        self.data = command::list_topics::list_topics();
                     }
                 }
             }
@@ -321,42 +320,4 @@ fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
     let [area] = vertical.areas(area);
     let [area] = horizontal.areas(area);
     area
-}
-
-fn create_list_topics_table_definition<'a>() -> TableDefinition<'a> {
-    TableDefinition::new(
-        vec![
-            Cell::from("Name"),
-            Cell::from("Address"),
-            Cell::from("Email")
-        ]
-    )
-}
-
-fn table_from<'a>(data: Vec<Data>) -> TableData<'a> {
-    let mut longest_name = 0;
-    let mut longest_address = 0;
-    let mut longest_email = 0;
-
-    TableData::new(
-        data.iter().map(|r| {
-            longest_name = max(0, constraint_len_calculator(&r.name()));
-            longest_address = max(0, constraint_len_calculator(&r.address()));
-            longest_email = max(0, constraint_len_calculator(&r.email()));
-            Row::new(
-                vec![
-                    Cell::from(r.name.clone()),
-                    Cell::from(r.address.clone()),
-                    Cell::from(r.email.clone()),
-                ]
-            )
-        }).collect(),
-        vec![
-            // + 1 is for padding.
-            Constraint::Length(longest_name + 1),
-            Constraint::Min(longest_address + 1),
-            Constraint::Min(longest_email),
-
-        ]
-    )
 }

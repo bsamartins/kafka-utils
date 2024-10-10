@@ -2,6 +2,7 @@ mod tui;
 mod app;
 mod table;
 mod test_data;
+mod command;
 
 use app::App;
 use color_eyre::eyre::Result;

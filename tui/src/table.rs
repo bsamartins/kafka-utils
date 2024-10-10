@@ -77,6 +77,13 @@ impl<'a> TableData<'a> {
             widths,
         }
     }
+
+    pub(crate) fn empty() -> Self {
+        Self {
+            rows: Vec::new(),
+            widths: Vec::new(),
+        }
+    }
 }
 
 pub(crate) fn constraint_len_calculator(item: &str) -> u16 {
