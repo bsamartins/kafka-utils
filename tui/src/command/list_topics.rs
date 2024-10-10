@@ -7,6 +7,7 @@ use ratatui::layout::Constraint;
 use ratatui::prelude::{Alignment, Modifier, Style, Stylize, Text};
 use ratatui::widgets::{Cell, Row};
 use std::cmp::max;
+use common::kafka;
 
 pub fn create_list_topics_table_definition<'a>() -> TableDefinition<'a> {
     TableDefinition::new(
@@ -66,10 +67,6 @@ pub struct ListTopicsState {
 }
 
 impl ListTopicsState {
-    pub fn new() -> Self {
-        ListTopicsState { topics: Vec::new() }
-    }
-
     pub fn set_topics(&mut self, topics: Vec<ListTopicEntry>) {
         self.topics = topics;
     }
@@ -77,7 +74,7 @@ impl ListTopicsState {
 
 impl Default for ListTopicsState {
     fn default() -> Self {
-        ListTopicsState::new()
+        ListTopicsState { topics: Vec::new() }
     }
 }
 
@@ -89,13 +86,9 @@ pub(crate) fn handle_key_event(key_event: KeyEvent, app: &App, state: &ListTopic
                 .selected
                 .iter()
                 .filter_map(|i| state.topics.get(*i))
+                .map(|t| t.name.to_string())
                 .collect::<Vec<_>>();
-            let selected = to_delete
-                .iter()
-                .map(|i| i.name.clone())
-                .join(",");
-
-            panic!("D Keyboard pressed [{}]", selected);
+            kafka::topic::delete_topics(&app.config ,to_delete);
         }
         _ => {}
     }

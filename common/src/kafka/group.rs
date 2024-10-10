@@ -4,8 +4,8 @@ use rdkafka::admin::{AdminOptions, GroupResult};
 use rdkafka::consumer::Consumer;
 use rdkafka::groups::GroupInfo;
 
-pub fn list(config: Config, consumer_group: Option<String>) -> Vec<ListConsumerGroupEntry> {
-    let result = create_base_client(config.clone())
+pub fn list(config: &Config, consumer_group: Option<String>) -> Vec<ListConsumerGroupEntry> {
+    let result = create_base_client(config)
         .fetch_group_list(None, config.timeout)
         .expect("could not fetch group list");
 
@@ -29,8 +29,8 @@ fn filter_group(group: &GroupInfo, group_query: Option<String>) -> bool {
     }
 }
 
-pub async fn delete(config: Config, consumer_group: Option<String>) -> Vec<GroupResult> {
-    let result = create_base_client(config.clone())
+pub async fn delete(config: &Config, consumer_group: Option<String>) -> Vec<GroupResult> {
+    let result = create_base_client(config)
         .fetch_group_list(None, config.timeout)
         .expect("could not fetch group list");
 
@@ -43,7 +43,7 @@ pub async fn delete(config: Config, consumer_group: Option<String>) -> Vec<Group
     let groups_to_delete: Vec<&str>  = groups.iter().map(|g| g.name())
         .collect();
 
-    create_admin_client(config)
+    create_admin_client(&config)
         .delete_groups(&groups_to_delete, &AdminOptions::new())
         .await
         .expect("could not delete groups")

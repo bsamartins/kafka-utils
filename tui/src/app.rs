@@ -4,7 +4,6 @@ use crate::table::{LocalTable, TableData};
 use color_eyre::eyre::WrapErr;
 use common::kafka;
 use common::kafka::client::Config;
-use convert_case::{Case, Casing};
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::layout::Flex;
@@ -12,19 +11,19 @@ use ratatui::prelude::{Alignment, Buffer, Color, Constraint, Layout, Modifier, R
 use ratatui::style::Styled;
 use ratatui::widgets::{Block, Borders, Cell, Clear, HighlightSpacing, Padding, Paragraph, Row, Table};
 use ratatui::{DefaultTerminal, Frame};
-use strum::IntoEnumIterator;
-use strum_macros::{EnumIter, IntoStaticStr};
+use std::ops::Deref;
+use std::string::ToString;
 use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
 
 #[derive(Clone)]
 pub struct App<'a> {
-    config: Config,
+    pub(crate) config: Config,
 
     input_mode: InputMode,
     input: Input,
 
-    command: Command,
+    command: Box<Command>,
 
     error: Option<String>,
 
@@ -44,19 +43,28 @@ impl Default for InputMode {
     fn default() -> Self { InputMode::DEFAULT }
 }
 
-#[derive(Debug, Clone, EnumIter, IntoStaticStr, Default)]
+#[derive(Debug, Clone)]
 enum Command {
-    #[default]
     None,
     ListTopics(ListTopicsState)
 }
 
 impl Command {
-    fn from(s: String) -> Option<Command> {
-        Command::iter().find(|e| {
-            let e_str: &str = e.into();
-            e_str.to_case(Case::Kebab) == s
-        })
+
+    const CMD_LIST_TOPICS: &'static str = "list-topics";
+
+    fn parse(s: String) -> Option<Command> {
+        match s.as_str() {
+            Command::CMD_LIST_TOPICS => Some(Command::ListTopics(ListTopicsState::default())),
+            _ => None
+        }
+    }
+
+    fn name(self) -> String {
+        match self {
+            Command::ListTopics(_) => Command::CMD_LIST_TOPICS.to_string(),
+            Command::None => "none".to_string(),
+        }
     }
 }
 
@@ -67,7 +75,7 @@ impl<'a> App<'a> {
             config,
             input_mode: Default::default(),
             input: Default::default(),
-            command: Command::None,
+            command: Box::new(Command::None),
             error: None,
             table: LocalTable::new(),
             data: TableData::empty(),
@@ -130,7 +138,7 @@ impl<'a> App<'a> {
                             KeyCode::Char('q') => self.exit(),
                             KeyCode::Char(':') => self.input_mode = InputMode::COMMAND,
                             _ => {
-                                match self.command {
+                                match self.command.deref() {
                                     Command::None => {}
                                     _ => {
                                         match key_event.code {
@@ -145,7 +153,7 @@ impl<'a> App<'a> {
                                             }
                                             _ => {}
                                         }
-                                        match &self.command {
+                                        match self.command.deref() {
                                             Command::ListTopics(state) => {
                                                 command::list_topics::handle_key_event(key_event, &self, state);
                                             }
@@ -163,22 +171,22 @@ impl<'a> App<'a> {
     }
 
     fn execute_command(&mut self) {
-        let command = Command::from(self.input.to_string());
-        match command {
+        match Command::parse(self.input.to_string()) {
             Some(cmd) => {
-                self.command = cmd.clone();
+                let mut cmd_ref = Box::new(cmd);
                 self.input.reset();
                 self.input_mode = InputMode::DEFAULT;
                 self.clear_error();
-                match cmd {
-                    Command::ListTopics(mut state) => {
+                match *cmd_ref {
+                    Command::ListTopics(ref mut state) => {
                         self.table.definition = command::list_topics::create_list_topics_table_definition();
-                        let topics = kafka::topic::list_topics(self.clone().config);
+                        let topics = kafka::topic::list_topics(&self.config);
                         state.set_topics(topics.clone());
                         self.data = command::list_topics::table_from(topics)
                     }
                     Command::None => {}
                 }
+                self.command = cmd_ref;
             }
             _ => {
                 self.set_error_message(format!("Unknown command '{}'", self.input));
@@ -278,9 +286,6 @@ impl<'a> ratatui::widgets::StatefulWidget for App<'a> {
             .block(Block::default().title("Input").borders(Borders::ALL))
             .render(input_area, buf);
 
-        let string_cmd: &str = self.command.clone().into();
-        let title = string_cmd.to_case(Case::Kebab);
-
         let main_block = Block::bordered()
             .style(Style::new().fg(self.table.colors.border))
             .padding(Padding {
@@ -288,7 +293,7 @@ impl<'a> ratatui::widgets::StatefulWidget for App<'a> {
                 right: 1,
                 ..Default::default()
             })
-            .title(title)
+            .title(self.command.clone().name())
             .title_alignment(Alignment::Center);
 
         main_block

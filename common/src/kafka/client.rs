@@ -26,17 +26,17 @@ pub fn create_config(bootstrap_servers: String, iam_auth: bool, region: String, 
     }
 }
 
-pub fn create_base_client(config: Config) -> BaseConsumer<IamClientContext> {
+pub fn create_base_client(config: &Config) -> BaseConsumer<IamClientContext> {
     config
         .client_config
-        .create_with_context(config.context)
+        .create_with_context(config.context.clone())
         .expect("Consumer creation failed")
 }
 
-pub fn create_admin_client(config: Config) -> AdminClient<IamClientContext> {
+pub fn create_admin_client(config: &Config) -> AdminClient<IamClientContext> {
     config
         .client_config
-        .create_with_context(config.context)
+        .create_with_context(config.context.to_owned())
         .expect("admin client creation failed")
 }
 
