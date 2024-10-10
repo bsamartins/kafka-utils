@@ -1,6 +1,8 @@
 use crate::command;
+use crate::command::list_topics::ListTopicsState;
 use crate::table::{LocalTable, TableData};
 use color_eyre::eyre::WrapErr;
+use common::kafka;
 use common::kafka::client::Config;
 use convert_case::{Case, Casing};
 use crossterm::event;
@@ -22,11 +24,11 @@ pub struct App<'a> {
     input_mode: InputMode,
     input: Input,
 
-    command: Option<Command>,
+    command: Command,
 
     error: Option<String>,
 
-    table: LocalTable<'a>,
+    pub(crate) table: LocalTable<'a>,
     data: TableData<'a>,
 
     exit: bool,
@@ -42,9 +44,11 @@ impl Default for InputMode {
     fn default() -> Self { InputMode::DEFAULT }
 }
 
-#[derive(Debug, Clone, EnumIter, IntoStaticStr)]
+#[derive(Debug, Clone, EnumIter, IntoStaticStr, Default)]
 enum Command {
-    ListTopics
+    #[default]
+    None,
+    ListTopics(ListTopicsState)
 }
 
 impl Command {
@@ -63,7 +67,7 @@ impl<'a> App<'a> {
             config,
             input_mode: Default::default(),
             input: Default::default(),
-            command: None,
+            command: Command::None,
             error: None,
             table: LocalTable::new(),
             data: TableData::empty(),
@@ -126,8 +130,9 @@ impl<'a> App<'a> {
                             KeyCode::Char('q') => self.exit(),
                             KeyCode::Char(':') => self.input_mode = InputMode::COMMAND,
                             _ => {
-                                match &self.command {
-                                    Some(cmd) => {
+                                match self.command {
+                                    Command::None => {}
+                                    _ => {
                                         match key_event.code {
                                             KeyCode::Up => {
                                                 self.table.state.select_previous();
@@ -140,9 +145,13 @@ impl<'a> App<'a> {
                                             }
                                             _ => {}
                                         }
+                                        match &self.command {
+                                            Command::ListTopics(state) => {
+                                                command::list_topics::handle_key_event(key_event, &self, state);
+                                            }
+                                            Command::None => {}
+                                        }
                                     }
-                                    _ => {}
-
                                 }
                             }
                         }
@@ -157,15 +166,18 @@ impl<'a> App<'a> {
         let command = Command::from(self.input.to_string());
         match command {
             Some(cmd) => {
-                self.command = Some(cmd);
+                self.command = cmd.clone();
                 self.input.reset();
                 self.input_mode = InputMode::DEFAULT;
                 self.clear_error();
                 match cmd {
-                    Command::ListTopics => {
+                    Command::ListTopics(mut state) => {
                         self.table.definition = command::list_topics::create_list_topics_table_definition();
-                        self.data = command::list_topics::list_topics(&self.config);
+                        let topics = kafka::topic::list_topics(self.clone().config);
+                        state.set_topics(topics.clone());
+                        self.data = command::list_topics::table_from(topics)
                     }
+                    Command::None => {}
                 }
             }
             _ => {
@@ -189,9 +201,10 @@ impl<'a> App<'a> {
 
     fn render_command_view(&self, cmd: &Command, area: Rect, buf: &mut Buffer, state: &mut App) {
         match cmd {
-            Command::ListTopics => {
+            Command::ListTopics(_) => {
                 self.draw_table(area, buf, state);
             }
+            _ => {}
         }
     }
 
@@ -265,34 +278,24 @@ impl<'a> ratatui::widgets::StatefulWidget for App<'a> {
             .block(Block::default().title("Input").borders(Borders::ALL))
             .render(input_area, buf);
 
-        let mut main_block = Block::bordered()
+        let string_cmd: &str = self.command.clone().into();
+        let title = string_cmd.to_case(Case::Kebab);
+
+        let main_block = Block::bordered()
             .style(Style::new().fg(self.table.colors.border))
             .padding(Padding {
                 left: 1,
                 right: 1,
                 ..Default::default()
-            });
-        main_block = match &self.command {
-            Some(cmd) => {
-                let string_cmd: &str = cmd.into();
-                let title = string_cmd.to_case(Case::Kebab);
-                main_block.title(title)
-                    .title_alignment(Alignment::Center)
-            },
-            None => main_block
-        };
+            })
+            .title(title)
+            .title_alignment(Alignment::Center);
 
-        match &self.command {
-            Some(cmd) => {
-                main_block
-                    .clone()
-                    .render(main_area, buf);
-                self.render_command_view(cmd, main_block.inner(main_area), buf, state)
-            },
-            None => {
-                main_block.render(main_area, buf);
-            }
-        }
+        main_block
+            .clone()
+            .render(main_area, buf);
+
+        self.render_command_view(&self.command, main_block.inner(main_area), buf, state);
 
         if self.has_error() {
             let message = self.error.clone().unwrap();
