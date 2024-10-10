@@ -1,18 +1,18 @@
+use crate::command;
 use crate::table::{LocalTable, TableData};
 use color_eyre::eyre::WrapErr;
+use common::kafka::client::Config;
 use convert_case::{Case, Casing};
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::layout::Flex;
-use ratatui::prelude::{Alignment, Buffer, Color, Constraint, Layout, Line, Modifier, Rect, Span, Style, Stylize, Text, Widget};
-use ratatui::widgets::{Block, Borders, Cell, Clear, HighlightSpacing, List, ListItem, Paragraph, Row, Table};
+use ratatui::prelude::{Alignment, Buffer, Color, Constraint, Layout, Modifier, Rect, Style, Stylize, Widget};
+use ratatui::widgets::{Block, Borders, Cell, Clear, HighlightSpacing, Padding, Paragraph, Row, Table};
 use ratatui::{DefaultTerminal, Frame};
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, IntoStaticStr};
 use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
-use common::kafka::client::Config;
-use crate::command;
 
 #[derive(Clone)]
 pub struct App<'a> {
@@ -21,13 +21,11 @@ pub struct App<'a> {
     input_mode: InputMode,
     input: Input,
 
-    commands: Vec<String>,
     command: Option<Command>,
 
     error: Option<String>,
 
     table: LocalTable<'a>,
-
     data: TableData<'a>,
 
     exit: bool,
@@ -64,7 +62,6 @@ impl<'a> App<'a> {
             config,
             input_mode: Default::default(),
             input: Default::default(),
-            commands: vec![],
             command: None,
             error: None,
             table: LocalTable::new(),
@@ -158,7 +155,6 @@ impl<'a> App<'a> {
         let command = Command::from(self.input.to_string());
         match command {
             Some(cmd) => {
-                self.commands.push(self.input.to_string());
                 self.command = Some(cmd);
                 self.input.reset();
                 self.input_mode = InputMode::DEFAULT;
@@ -230,12 +226,9 @@ impl<'a> App<'a> {
                 .style(Style::new().fg(table.colors.row_fg).bg(color))
                 .height(1)
         });
-        let bar = " █ ";
         let t = Table::new(rows, table_data.widths)
             .header(header)
             .highlight_style(selected_style)
-            .highlight_symbol(Text::from(vec![bar.into()]))
-            .bg(table.colors.buffer_bg)
             .highlight_spacing(HighlightSpacing::Always);
 
         ratatui::prelude::StatefulWidget::render(t, area, buf, &mut state.table.state)
@@ -267,17 +260,12 @@ impl<'a> ratatui::widgets::StatefulWidget for App<'a> {
             .block(Block::default().title("Input").borders(Borders::ALL))
             .render(input_area, buf);
 
-        let messages: Vec<ListItem> = self
-            .commands
-            .iter()
-            .enumerate()
-            .map(|(i, m)| {
-                let content = Line::from(Span::raw(format!("{i}: {m}")));
-                ListItem::new(content)
-            })
-            .collect();
-
-        let mut main_block = Block::bordered();
+        let mut main_block = Block::bordered()
+            .padding(Padding {
+                left: 1,
+                right: 1,
+                ..Default::default()
+            });
         main_block = match &self.command {
             Some(cmd) => {
                 let string_cmd: &str = cmd.into();
@@ -290,14 +278,12 @@ impl<'a> ratatui::widgets::StatefulWidget for App<'a> {
 
         match &self.command {
             Some(cmd) => {
-                main_block.clone().render(main_area, buf);
+                main_block
+                    .clone()
+                    .render(main_area, buf);
                 self.render_command_view(cmd, main_block.inner(main_area), buf, state)
             },
-            None => {
-                let list = List::new(messages)
-                    .block(main_block);
-                Widget::render(list, main_area, buf);
-            }
+            None => {}
         }
 
         if self.has_error() {
