@@ -205,9 +205,7 @@ impl<'a> App<'a> {
         let header_style = Style::default()
             .fg(table.colors.header_fg);
         let selected_style = Style::default()
-            .add_modifier(Modifier::REVERSED)
-            // .fg(table.colors.selected_style_fg)
-            ;
+            .add_modifier(Modifier::REVERSED);
 
         let table_definition = state.clone().table.definition;
         let header = table_definition
@@ -217,12 +215,8 @@ impl<'a> App<'a> {
             .collect::<Row>()
             .style(header_style)
             .height(1);
-        let rows = table_data.rows.iter().enumerate().map(|(i, data)| {
-            data.clone()
-                // .style(Style::new().fg(table.colors.row_fg).bg(color))
-                .height(1)
-        });
-        let t = Table::new(rows, table_data.widths)
+
+        let t = Table::new(table_data.rows, table_data.widths)
             .header(header)
             .highlight_style(selected_style)
             .highlight_spacing(HighlightSpacing::Always);

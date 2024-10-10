@@ -3,7 +3,7 @@ use common::kafka;
 use common::kafka::client::Config;
 use common::kafka::types::ListTopicEntry;
 use ratatui::layout::Constraint;
-use ratatui::prelude::{Alignment, Style, Text};
+use ratatui::prelude::{Alignment, Modifier, Style, Stylize, Text};
 use ratatui::widgets::{Cell, Row};
 use std::cmp::max;
 
@@ -38,7 +38,7 @@ pub fn table_from<'a>(data: Vec<ListTopicEntry>) -> TableData<'a> {
             longest_replication_factor = max(longest_replication_factor, constraint_len_calculator(r.replication_factor.to_string().as_str()));
             longest_message_count = max(longest_message_count, constraint_len_calculator(r.message_count.to_string().as_str()));
             longest_size = max(longest_size, constraint_len_calculator(r.size.to_string().as_str()));
-            Row::new(
+            let row = Row::new(
                 vec![
                     Cell::from(r.clone().name).style(Style::new()),
                     Cell::from(Text::from(r.partitions.to_string()).alignment(Alignment::Right)),
@@ -46,7 +46,12 @@ pub fn table_from<'a>(data: Vec<ListTopicEntry>) -> TableData<'a> {
                     Cell::from(Text::from(r.message_count.to_string()).alignment(Alignment::Right)),
                     Cell::from(Text::from(r.size.to_string()).alignment(Alignment::Right)),
                 ]
-            )
+            );
+            if r.name.starts_with("_") {
+                row.add_modifier(Modifier::DIM)
+            } else {
+                row
+            }
         }).collect(),
         vec![
             // + 1 is for padding.

@@ -1,5 +1,5 @@
 use ratatui::prelude::Constraint;
-use ratatui::style::palette::tailwind::{Palette, CYAN, SLATE};
+use ratatui::style::palette::tailwind::CYAN;
 use ratatui::style::Color;
 use ratatui::widgets::{Cell, Row, TableState};
 use unicode_width::UnicodeWidthStr;
@@ -14,7 +14,7 @@ pub struct LocalTable<'a> {
 impl<'a> LocalTable<'a> {
     pub(crate) fn new() -> Self {
         Self {
-            colors: TableColors::new(&SLATE),
+            colors: TableColors::new(),
             state: TableState::default(),
             definition: TableDefinition::empty(),
         }
@@ -25,17 +25,13 @@ impl<'a> LocalTable<'a> {
 pub struct TableColors {
     pub(crate) border: Color,
     pub(crate) header_fg: Color,
-    pub(crate) row_fg: Color,
-    pub(crate) selected_style_fg: Color,
 }
 
 impl TableColors {
-    const fn new(color: &Palette) -> Self {
+    const fn new() -> Self {
         Self {
             border: CYAN.c400,
             header_fg: Color::White,
-            row_fg: CYAN.c400,
-            selected_style_fg: color.c400,
         }
     }
 }
