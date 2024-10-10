@@ -32,11 +32,11 @@ pub fn table_from<'a>(data: Vec<ListTopicEntry>) -> TableData<'a> {
 
     TableData::new(
         data.iter().map(|r| {
-            longest_name = max(0, constraint_len_calculator(r.name.as_str()));
-            longest_partitions = max(0, constraint_len_calculator(r.partitions.to_string().as_str()));
-            longest_replication_factor = max(0, constraint_len_calculator(r.replication_factor.to_string().as_str()));
-            longest_message_count = max(0, constraint_len_calculator(r.message_count.to_string().as_str()));
-            longest_size = max(0, constraint_len_calculator(r.size.to_string().as_str()));
+            longest_name = max(longest_name, constraint_len_calculator(r.name.as_str()));
+            longest_partitions = max(longest_partitions, constraint_len_calculator(r.partitions.to_string().as_str()));
+            longest_replication_factor = max(longest_replication_factor, constraint_len_calculator(r.replication_factor.to_string().as_str()));
+            longest_message_count = max(longest_message_count, constraint_len_calculator(r.message_count.to_string().as_str()));
+            longest_size = max(longest_size, constraint_len_calculator(r.size.to_string().as_str()));
             Row::new(
                 vec![
                     Cell::from(r.clone().name),
