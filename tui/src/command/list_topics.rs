@@ -1,5 +1,6 @@
-use crate::app::App;
+use crate::app::{App, PopupWidget};
 use crate::table::{constraint_len_calculator, TableData, TableDefinition};
+use common::kafka;
 use common::kafka::types::ListTopicEntry;
 use crossterm::event::{KeyCode, KeyEvent};
 use itertools::Itertools;
@@ -7,7 +8,6 @@ use ratatui::layout::Constraint;
 use ratatui::prelude::{Alignment, Modifier, Style, Stylize, Text};
 use ratatui::widgets::{Cell, Row};
 use std::cmp::max;
-use common::kafka;
 
 pub fn create_list_topics_table_definition<'a>() -> TableDefinition<'a> {
     TableDefinition::new(
@@ -78,7 +78,7 @@ impl Default for ListTopicsState {
     }
 }
 
-pub(crate) fn handle_key_event(key_event: KeyEvent, app: &App, state: &ListTopicsState) {
+pub(crate) async fn handle_key_event(key_event: KeyEvent, app: &mut App<'_>, state: ListTopicsState) {
     match key_event.code {
         KeyCode::Char('d') => {
             let to_delete = app
@@ -88,7 +88,28 @@ pub(crate) fn handle_key_event(key_event: KeyEvent, app: &App, state: &ListTopic
                 .filter_map(|i| state.topics.get(*i))
                 .map(|t| t.name.to_string())
                 .collect::<Vec<_>>();
-            kafka::topic::delete_topics(&app.config ,to_delete);
+
+            match kafka::topic::delete_topics(&app.config, to_delete).await {
+                Ok(res) => {
+                    let errors = res.iter().flat_map(|r| {
+                        if r.is_err() {
+                            Some(r.clone().unwrap_err())
+                        } else {
+                            None
+                        }
+                    }).map(|(topic, error)| format!("{}, {}", topic, error))
+                        .collect::<Vec<_>>();
+
+                    if errors.is_empty() {
+                        app.open("Topics deleted successfully".to_string());
+                    } else {
+                        app.open(format!("Failed to delete topics:\n{}", errors.join("\n ")));
+                    }
+                }
+                Err(err) => {
+                    app.open(err.to_string());
+                }
+            };
         }
         _ => {}
     }

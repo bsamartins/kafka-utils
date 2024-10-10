@@ -84,10 +84,12 @@ impl<'a> App<'a> {
     }
 
     /// runs the application's main loop until the user quits
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> color_eyre::Result<()> {
+    pub async fn run(&mut self, terminal: &mut DefaultTerminal) -> color_eyre::Result<()> {
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
-            self.handle_events().wrap_err("handle events failed")?;
+            self.handle_events()
+                .await
+                .wrap_err("handle events failed")?;
         }
         Ok(())
     }
@@ -96,18 +98,19 @@ impl<'a> App<'a> {
         frame.render_stateful_widget(self.clone(), frame.area(), self);
     }
 
-    fn handle_events(&mut self) -> color_eyre::Result<()> {
+    async fn handle_events(&mut self) -> color_eyre::Result<()> {
         match event::read()? {
             // it's important to check that the event is a key press event as
             // crossterm also emits key release and repeat events on Windows.
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => self
                 .handle_key_event(key_event)
+                .await
                 .wrap_err_with(|| format!("handling key event failed:\n{key_event:#?}")),
             _ => Ok(())
         }
     }
 
-    fn handle_key_event(&mut self, key_event: KeyEvent) -> color_eyre::Result<()> {
+    async fn handle_key_event(&mut self, key_event: KeyEvent) -> color_eyre::Result<()> {
         match key_event.code {
             KeyCode::Char('c') if key_event.modifiers == KeyModifiers::CONTROL => self.exit(),
             _ => {
@@ -155,7 +158,8 @@ impl<'a> App<'a> {
                                         }
                                         match self.command.deref() {
                                             Command::ListTopics(state) => {
-                                                command::list_topics::handle_key_event(key_event, &self, state);
+                                                command::list_topics::handle_key_event(key_event, self, state.to_owned())
+                                                    .await;
                                             }
                                             Command::None => {}
                                         }
@@ -326,4 +330,24 @@ fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
     let [area] = vertical.areas(area);
     let [area] = horizontal.areas(area);
     area
+}
+
+pub trait PopupWidget {
+    fn open(&mut self, message: String);
+    fn close(&mut self);
+    fn is_open(&self) -> bool;
+}
+
+impl PopupWidget for App<'_> {
+    fn open(&mut self, message: String) {
+        self.set_error_message(message);
+    }
+
+    fn close(&mut self) {
+        self.clear_error();
+    }
+
+    fn is_open(&self) -> bool {
+        self.has_error()
+    }
 }

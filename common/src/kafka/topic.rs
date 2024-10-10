@@ -2,8 +2,9 @@ use crate::kafka;
 use crate::kafka::client::{create_base_client, Config, IamClientContext};
 use crate::kafka::types::ListTopicEntry;
 use itertools::Itertools;
-use rdkafka::admin::AdminOptions;
+use rdkafka::admin::{AdminOptions, TopicResult};
 use rdkafka::consumer::{BaseConsumer, Consumer};
+use rdkafka::error::KafkaError;
 use rdkafka::metadata::MetadataTopic;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -72,28 +73,10 @@ pub fn list_topics_names(config: &Config) -> Vec<String> {
     topics
 }
 
-pub async fn delete_topics(config: &Config, topics: Vec<String>) {
+pub async fn delete_topics(config: &Config, topics: Vec<String>) -> Result<Vec<TopicResult>, KafkaError> {
     let delete_topics:Vec<&str> = topics.iter()
         .map(|t| t.as_str())
         .collect();
     let admin_options = AdminOptions::new();
-    let result = kafka::client::create_admin_client(config).delete_topics(&delete_topics, &admin_options).await;
-    match result {
-        Ok(topic_results) => {
-            topic_results.iter()
-                .filter_map(|res| {
-                    if res.is_err() {
-                        Some(res.clone().unwrap_err())
-                    } else {
-                        None
-                    }
-                })
-                .for_each(|(topic, error)| {
-                    println!("Unable to delete topic {topic}: {error}");
-                })
-        }
-        Err(err) => {
-            println!("Failed to delete topics: {err}");
-        }
-    }
+    kafka::client::create_admin_client(config).delete_topics(&delete_topics, &admin_options).await
 }
