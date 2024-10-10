@@ -11,10 +11,13 @@ use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, IntoStaticStr};
 use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
+use common::kafka::client::Config;
 use crate::command;
 
 #[derive(Clone)]
 pub struct App<'a> {
+    config: Config,
+
     input_mode: InputMode,
     input: Input,
 
@@ -56,8 +59,9 @@ impl Command {
 
 impl<'a> App<'a> {
 
-    pub fn new() -> Self {
+    pub fn new(config: Config) -> Self {
         Self {
+            config,
             input_mode: Default::default(),
             input: Default::default(),
             commands: vec![],
