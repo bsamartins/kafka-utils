@@ -2043,6 +2043,7 @@ dependencies = [
  "convert_case",
  "crossterm",
  "itertools",
+ "openssl",
  "ratatui 0.29.0",
  "strum",
  "strum_macros",
