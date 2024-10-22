@@ -19,9 +19,7 @@ jobs:
 
     - name: Prepare
       run: |
-        rustup target add aarch64-unknown-linux-gnu x86_64-unknown-linux-gnu
         cargo install cross
-        cd tui
 
     - name: Build linux-amd64
       run: cross build --package tui -vv --release --target x86_64-unknown-linux-gnu
