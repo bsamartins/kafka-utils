@@ -269,7 +269,7 @@ impl<'a> App<'a> {
 
         let t = Table::new(rows, table_data.widths)
             .header(header)
-            .highlight_style(selected_style)
+            .row_highlight_style(selected_style)
             .highlight_spacing(HighlightSpacing::Always);
 
         ratatui::prelude::StatefulWidget::render(t, area, buf, &mut state.table.state)
