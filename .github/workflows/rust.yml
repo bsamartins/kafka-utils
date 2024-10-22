@@ -19,10 +19,11 @@ jobs:
 
     - name: Prepare
       run: |
+        rustup target add aarch64-unknown-linux-musl x86_64-unknown-linux-musl
         cargo install cross
 
     - name: Build linux-amd64
-      run: rust build -v --release --target x86_64-unknown-linux-musl
+      run: cargo build -v --release --target x86_64-unknown-linux-musl
 
 #    - name: Build linux-amd64
 #      run: cross build -v --release --target x86_64-unknown-linux-musl
