@@ -9,3 +9,7 @@ pre-build = [
     "dpkg --add-architecture $CROSS_DEB_ARCH",
     "apt-get update && apt-get -y install libssl-dev"
 ]
+env.passthrough = [
+    "CC=musl-gcc",
+    "CXX=g++"
+]
