@@ -11,6 +11,8 @@ use color_eyre::eyre::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
     let cli = Cli::parse();
     let config = get_config(cli);
 
