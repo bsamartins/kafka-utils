@@ -31,6 +31,7 @@ pub struct App<'a> {
     data: TableData<'a>,
 
     exit: bool,
+    popup_type: PopupType,
 }
 
 #[derive(Debug, Clone)]
@@ -80,6 +81,7 @@ impl<'a> App<'a> {
             table: LocalTable::new(),
             data: TableData::empty(),
             exit: false,
+            popup_type: PopupType::SUCCESS,
         }
     }
 
@@ -114,6 +116,15 @@ impl<'a> App<'a> {
         match key_event.code {
             KeyCode::Char('c') if key_event.modifiers == KeyModifiers::CONTROL => self.exit(),
             _ => {
+                if self.is_open() {
+                    match key_event.code {
+                        KeyCode::Esc => {
+                            self.close()
+                        },
+                        _ => {}
+                    }
+                    return Ok(())
+                }
                 match self.input_mode {
                     InputMode::COMMAND => {
                         match key_event.code {
@@ -308,16 +319,20 @@ impl<'a> ratatui::widgets::StatefulWidget for App<'a> {
 
         if self.has_error() {
             let message = self.error.clone().unwrap();
-            let block = Block::bordered()
-                .title("error")
-                .title_alignment(Alignment::Center)
-                .title_style(Style::default())
-                .bg(Color::Black);
 
             let pop_area = popup_area(area, 60, 20);
             Clear.render(pop_area, buf);
+            let (title, color) = match self.popup_type {
+                PopupType::ERROR => ("error", Color::Red),
+                PopupType::SUCCESS => ("success", Color::Green),
+            };
+            let block = Block::bordered()
+                .title(title)
+                .title_alignment(Alignment::Center)
+                .title_style(Style::default())
+                .bg(Color::Black);
             Paragraph::new(message)
-                .style(Color::Red)
+                .style(color)
                 .block(block)
                 .render(pop_area, buf);
         }
@@ -333,13 +348,14 @@ fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
 }
 
 pub trait PopupWidget {
-    fn open(&mut self, message: String);
+    fn open(&mut self, popup_type: PopupType, message: String);
     fn close(&mut self);
     fn is_open(&self) -> bool;
 }
 
 impl PopupWidget for App<'_> {
-    fn open(&mut self, message: String) {
+    fn open(&mut self, popup_type: PopupType, message: String) {
+        self.popup_type = popup_type;
         self.set_error_message(message);
     }
 
@@ -350,4 +366,10 @@ impl PopupWidget for App<'_> {
     fn is_open(&self) -> bool {
         self.has_error()
     }
+}
+
+#[derive(Clone)]
+pub enum PopupType {
+    ERROR,
+    SUCCESS
 }

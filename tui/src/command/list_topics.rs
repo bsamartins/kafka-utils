@@ -1,9 +1,8 @@
-use crate::app::{App, PopupWidget};
+use crate::app::{App, PopupType, PopupWidget};
 use crate::table::{constraint_len_calculator, TableData, TableDefinition};
 use common::kafka;
 use common::kafka::types::ListTopicEntry;
 use crossterm::event::{KeyCode, KeyEvent};
-use itertools::Itertools;
 use ratatui::layout::Constraint;
 use ratatui::prelude::{Alignment, Modifier, Style, Stylize, Text};
 use ratatui::widgets::{Cell, Row};
@@ -89,6 +88,10 @@ pub(crate) async fn handle_key_event(key_event: KeyEvent, app: &mut App<'_>, sta
                 .map(|t| t.name.to_string())
                 .collect::<Vec<_>>();
 
+            if to_delete.is_empty() {
+                return;
+            }
+
             match kafka::topic::delete_topics(&app.config, to_delete).await {
                 Ok(res) => {
                     let errors = res.iter().flat_map(|r| {
@@ -101,13 +104,13 @@ pub(crate) async fn handle_key_event(key_event: KeyEvent, app: &mut App<'_>, sta
                         .collect::<Vec<_>>();
 
                     if errors.is_empty() {
-                        app.open("Topics deleted successfully".to_string());
+                        app.open(PopupType::SUCCESS, "Topics deleted successfully".to_string());
                     } else {
-                        app.open(format!("Failed to delete topics:\n{}", errors.join("\n ")));
+                        app.open(PopupType::ERROR, format!("Failed to delete topics:\n{}", errors.join("\n ")));
                     }
                 }
                 Err(err) => {
-                    app.open(err.to_string());
+                    app.open(PopupType::ERROR, err.to_string());
                 }
             };
         }
