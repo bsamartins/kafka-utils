@@ -16,10 +16,18 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --verbose
-#    - name: Run tests
-#      run: cargo test --verbose
+
+    - name: Prepare
+      run: |
+        rustup target add aarch64-unknown-linux-gnu x86_64-unknown-linux-gnu
+        cargo install cross
+
+    - name: Build linux-amd64
+      run: cross build --release --target x86_64-unknown-linux-gnu
+
+    - name: Build linux-arm64
+      run: cross build --release --target aarch64-unknown-linux-gnu
+
     - name: Archive production artifacts
       uses: actions/upload-artifact@v4
       with:
