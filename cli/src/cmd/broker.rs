@@ -6,7 +6,7 @@ use common::kafka::types::ListBrokerEntry;
 use std::borrow::Cow;
 use tabled::Tabled;
 
-pub fn list_brokers_cmd(config: Config) {
+pub fn list_brokers_cmd(config: &Config) {
     let brokers = kafka::broker::list_brokers(config)
         .iter().map(|e| ListBrokerTable(e.clone()))
         .collect();

@@ -65,7 +65,7 @@ async fn main() {
             let cluster_cmd = cluster.command.unwrap_or(ClusterCommands::Brokers);
             match cluster_cmd {
                 ClusterCommands::Brokers => {
-                    cmd::broker::list_brokers_cmd(config)
+                    cmd::broker::list_brokers_cmd(&config)
                 }
             }
         }
@@ -73,10 +73,10 @@ async fn main() {
             let topics_cmd = topics.command.unwrap_or(TopicsCommands::List);
             match topics_cmd {
                 TopicsCommands::List => {
-                    cmd::topic::list_topics_cmd(config);
+                    cmd::topic::list_topics_cmd(&config);
                 }
                 TopicsCommands::Delete(args) => {
-                    cmd::topic::delete_topics_cmd(config, args.run, args.topic_name).await;
+                    cmd::topic::delete_topics_cmd(&config, args.run, args.topic_name).await;
                 }
             }
         }
@@ -84,10 +84,10 @@ async fn main() {
             let consumer_cmd = consumer.command.unwrap_or(ConsumerCommands::List(ListConsumerArgs { consumer_group: None }));
             match consumer_cmd {
                 ConsumerCommands::List(args) => {
-                    cmd::consumer::list(config, args.consumer_group)
+                    cmd::consumer::list(&config, args.consumer_group)
                 }
                 ConsumerCommands::Delete(args) => {
-                    cmd::consumer::delete(config, args.consumer_group).await
+                    cmd::consumer::delete(&config, args.consumer_group).await
                 }
             }
         }

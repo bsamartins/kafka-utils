@@ -32,7 +32,7 @@ pub struct DeleteConsumerArgs {
     pub(crate) consumer_group: Option<String>,
 }
 
-pub(crate) fn list(config: Config, consumer_group: Option<String>) {
+pub(crate) fn list(config: &Config, consumer_group: Option<String>) {
     let groups:Vec<ListConsumerGroupEntryTable> = kafka::group::list(config, consumer_group)
         .iter()
         .map(|group| ListConsumerGroupEntryTable(group.to_owned()))
@@ -41,7 +41,7 @@ pub(crate) fn list(config: Config, consumer_group: Option<String>) {
     println!("{}", table::create(groups));
 }
 
-pub(crate) async fn delete(config: Config, consumer_group: Option<String>) {
+pub(crate) async fn delete(config: &Config, consumer_group: Option<String>) {
     let result = kafka::group::delete(config, consumer_group).await;
     result.iter().for_each(|res| println!("{:?}", res))
 }

@@ -7,7 +7,7 @@ use rdkafka::admin::AdminOptions;
 use std::borrow::Cow;
 use tabled::Tabled;
 
-pub fn list_topics_cmd(config: Config) {
+pub fn list_topics_cmd(config: &Config) {
     println!("Listing topics");
 
     let topics: Vec<ListTopicTable> = kafka::topic::list_topics(config)
@@ -20,8 +20,8 @@ pub fn list_topics_cmd(config: Config) {
     println!("{table}")
 }
 
-pub async fn delete_topics_cmd(config: Config, run: bool, topic_name: Option<String>) {
-    let topics = kafka::topic::list_topics_names(config.clone());
+pub async fn delete_topics_cmd(config: &Config, run: bool, topic_name: Option<String>) {
+    let topics = kafka::topic::list_topics_names(config);
     let delete_topics: Vec<&str> = topics
         .iter()
         .filter(|topic|
