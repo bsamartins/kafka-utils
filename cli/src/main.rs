@@ -2,7 +2,6 @@ mod cmd;
 
 use crate::cmd::broker::{ClusterArgs, ClusterCommands};
 use crate::cmd::consumer::{ConsumerArgs, ConsumerCommands, ListConsumerArgs};
-use crate::cmd::topic::{TopicsArgs, TopicsCommands};
 use clap::{Parser, Subcommand, ValueEnum};
 use common::kafka;
 use core::time::Duration;
@@ -29,8 +28,6 @@ enum Commands {
     Cluster(ClusterArgs),
     #[command(arg_required_else_help = true)]
     Consumers(ConsumerArgs),
-    #[command(arg_required_else_help = true)]
-    Topics(TopicsArgs),
 }
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
@@ -68,17 +65,6 @@ async fn main() {
             match cluster_cmd {
                 ClusterCommands::Brokers => {
                     cmd::broker::list_brokers_cmd(&config)
-                }
-            }
-        }
-        Commands::Topics(topics) => {
-            let topics_cmd = topics.command.unwrap_or(TopicsCommands::List);
-            match topics_cmd {
-                TopicsCommands::List => {
-                    cmd::topic::list_topics_cmd(&config);
-                }
-                TopicsCommands::Delete(args) => {
-                    cmd::topic::delete_topics_cmd(&config, args.run, args.topic_name).await;
                 }
             }
         }
